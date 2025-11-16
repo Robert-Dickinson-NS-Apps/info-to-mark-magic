@@ -7,6 +7,16 @@ import { Loader2, Download, Copy, Globe, Eye, Code, Split } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import { MarkdownPreview } from './MarkdownPreview';
+import { z } from 'zod';
+
+const urlSchema = z.string()
+  .trim()
+  .min(1, 'URL is required')
+  .url('Please enter a valid URL (e.g., https://example.com)')
+  .refine(
+    (url) => url.startsWith('http://') || url.startsWith('https://'),
+    'URL must start with http:// or https://'
+  );
 
 type ViewMode = 'edit' | 'preview' | 'split';
 
@@ -18,10 +28,14 @@ export const ScraperForm = () => {
   const { toast } = useToast();
 
   const handleScrape = async () => {
-    if (!url) {
+    // Validate URL
+    const validation = urlSchema.safeParse(url);
+    
+    if (!validation.success) {
+      const errorMessage = validation.error.errors[0]?.message || 'Invalid URL';
       toast({
-        title: "URL Required",
-        description: "Please enter a URL to scrape",
+        title: "Invalid URL",
+        description: errorMessage,
         variant: "destructive",
       });
       return;
@@ -32,7 +46,7 @@ export const ScraperForm = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('scrape-to-markdown', {
-        body: { url }
+        body: { url: validation.data }
       });
 
       if (error) throw error;
@@ -43,12 +57,13 @@ export const ScraperForm = () => {
           title: "Success",
           description: "Content scraped successfully",
         });
+      } else {
+        throw new Error('No content returned from the scraper');
       }
     } catch (error) {
-      console.error('Scraping error:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to scrape content",
+        title: "Scraping Failed",
+        description: error instanceof Error ? error.message : "Failed to scrape content. Please check the URL and try again.",
         variant: "destructive",
       });
     } finally {
