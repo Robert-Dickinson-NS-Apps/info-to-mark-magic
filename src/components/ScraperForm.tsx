@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Download, Copy, Globe } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import CodeEditor from '@uiw/react-textarea-code-editor';
 
 export const ScraperForm = () => {
   const [url, setUrl] = useState('');
@@ -150,11 +150,22 @@ export const ScraperForm = () => {
                   </Button>
                 </div>
 
-                <Textarea
+                <CodeEditor
                   value={markdown}
-                  onChange={(e) => setMarkdown(e.target.value)}
-                  className="font-mono text-sm min-h-[500px]"
+                  language="markdown"
                   placeholder="Markdown content will appear here..."
+                  onChange={(e) => setMarkdown(e.target.value)}
+                  padding={15}
+                  style={{
+                    fontSize: 14,
+                    fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+                    minHeight: '500px',
+                    backgroundColor: 'hsl(var(--background))',
+                    color: 'hsl(var(--foreground))',
+                    borderRadius: '0.5rem',
+                    border: '1px solid hsl(var(--border))',
+                  }}
+                  className="w-full"
                 />
               </div>
             )}
