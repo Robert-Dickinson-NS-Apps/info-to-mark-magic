@@ -2,18 +2,35 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MarkdownPreview } from './MarkdownPreview';
-import { Edit, Eye, Columns } from 'lucide-react';
+import { MarkdownPreview, SyntaxTheme } from './MarkdownPreview';
+import { Edit, Eye, Columns, Palette } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface MarkdownEditorProps {
   initialContent: string;
   onContentChange: (content: string) => void;
 }
 
+const themes: { value: SyntaxTheme; label: string }[] = [
+  { value: 'vscDarkPlus', label: 'VS Code Dark+' },
+  { value: 'oneDark', label: 'One Dark' },
+  { value: 'atomDark', label: 'Atom Dark' },
+  { value: 'nightOwl', label: 'Night Owl' },
+  { value: 'dracula', label: 'Dracula' },
+  { value: 'vs', label: 'VS Light' },
+];
+
 export const MarkdownEditor = ({ initialContent, onContentChange }: MarkdownEditorProps) => {
   const [content, setContent] = useState(initialContent);
   const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>('split');
+  const [syntaxTheme, setSyntaxTheme] = useState<SyntaxTheme>('vscDarkPlus');
 
   const handleChange = (newContent: string) => {
     setContent(newContent);
@@ -24,7 +41,20 @@ export const MarkdownEditor = ({ initialContent, onContentChange }: MarkdownEdit
     <Card className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-foreground">Markdown Editor</h3>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <Select value={syntaxTheme} onValueChange={(value) => setSyntaxTheme(value as SyntaxTheme)}>
+            <SelectTrigger className="w-[180px] h-9">
+              <Palette className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Select theme" />
+            </SelectTrigger>
+            <SelectContent>
+              {themes.map((theme) => (
+                <SelectItem key={theme.value} value={theme.value}>
+                  {theme.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             variant={viewMode === 'edit' ? 'default' : 'outline'}
             size="sm"
@@ -64,7 +94,7 @@ export const MarkdownEditor = ({ initialContent, onContentChange }: MarkdownEdit
               />
             </div>
             <div className="p-4 overflow-auto max-h-[500px]">
-              <MarkdownPreview content={content} />
+              <MarkdownPreview content={content} theme={syntaxTheme} />
             </div>
           </div>
         )}
@@ -82,7 +112,7 @@ export const MarkdownEditor = ({ initialContent, onContentChange }: MarkdownEdit
 
         {viewMode === 'preview' && (
           <div className="p-4 overflow-auto max-h-[500px]">
-            <MarkdownPreview content={content} />
+            <MarkdownPreview content={content} theme={syntaxTheme} />
           </div>
         )}
       </div>

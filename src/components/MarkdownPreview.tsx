@@ -1,13 +1,25 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { vscDarkPlus, oneDark, atomDark, nightOwl, dracula, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+export type SyntaxTheme = 'vscDarkPlus' | 'oneDark' | 'atomDark' | 'nightOwl' | 'dracula' | 'vs';
 
 interface MarkdownPreviewProps {
   content: string;
+  theme?: SyntaxTheme;
 }
 
-export const MarkdownPreview = ({ content }: MarkdownPreviewProps) => {
+const themeMap = {
+  vscDarkPlus,
+  oneDark,
+  atomDark,
+  nightOwl,
+  dracula,
+  vs,
+};
+
+export const MarkdownPreview = ({ content, theme = 'vscDarkPlus' }: MarkdownPreviewProps) => {
   return (
     <div className="prose prose-sm max-w-none dark:prose-invert bg-background p-6 rounded-lg border border-border overflow-auto max-h-[600px]">
       <ReactMarkdown
@@ -17,7 +29,7 @@ export const MarkdownPreview = ({ content }: MarkdownPreviewProps) => {
             const match = /language-(\w+)/.exec(className || '');
             return !inline && match ? (
               <SyntaxHighlighter
-                style={vscDarkPlus}
+                style={themeMap[theme]}
                 language={match[1]}
                 PreTag="div"
                 {...props}
