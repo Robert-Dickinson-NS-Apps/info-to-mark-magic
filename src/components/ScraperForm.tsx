@@ -3,11 +3,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Download, Copy, Globe, Eye, Code, Split } from 'lucide-react';
+import { Loader2, Download, Copy, Globe, Eye, Code, Split, FileText, FileCode, FileType } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import { MarkdownPreview } from './MarkdownPreview';
 import { z } from 'zod';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { exportToPDF } from '@/utils/pdfExport';
+import { exportToHTML } from '@/utils/htmlExport';
+import { generateTableOfContents } from '@/utils/markdownUtils';
 
 const urlSchema = z.string()
   .trim()
@@ -99,6 +108,85 @@ export const ScraperForm = () => {
     });
   };
 
+  const handleExportPlainText = () => {
+    if (!markdown) return;
+
+    // Strip markdown formatting
+    const plainText = markdown
+      .replace(/#{1,6}\s/g, '') // Remove heading markers
+      .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold
+      .replace(/\*(.+?)\*/g, '$1') // Remove italic
+      .replace(/\[(.+?)\]\(.+?\)/g, '$1') // Remove links, keep text
+      .replace(/`(.+?)`/g, '$1') // Remove inline code
+      .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+      .replace(/>\s/g, '') // Remove blockquotes
+      .replace(/[-*+]\s/g, '• '); // Replace list markers with bullets
+
+    const blob = new Blob([plainText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'scraped-content.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Downloaded",
+      description: "Plain text file downloaded successfully",
+    });
+  };
+
+  const handleExportHTML = async () => {
+    if (!markdown) return;
+
+    try {
+      const toc = generateTableOfContents(markdown);
+      await exportToHTML({
+        markdown,
+        toc,
+        filename: 'scraped-content.html',
+        theme: 'light',
+      });
+
+      toast({
+        title: "Downloaded",
+        description: "HTML file downloaded successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Failed to export HTML file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!markdown) return;
+
+    try {
+      const toc = generateTableOfContents(markdown);
+      await exportToPDF({
+        markdown,
+        toc,
+        filename: 'scraped-content.pdf',
+      });
+
+      toast({
+        title: "Downloaded",
+        description: "PDF file downloaded successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Failed to export PDF file",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleCopy = async () => {
     if (!markdown) return;
 
@@ -175,20 +263,38 @@ export const ScraperForm = () => {
             {markdown && !isLoading && (
               <div className="space-y-4">
                 <div className="flex gap-2">
-                  <Button 
-                    onClick={handleDownload}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="flex-1">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={handleDownload}>
+                        <Code className="h-4 w-4 mr-2" />
+                        Markdown (.md)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleExportPlainText}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Plain Text (.txt)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleExportHTML}>
+                        <FileCode className="h-4 w-4 mr-2" />
+                        HTML (.html)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleExportPDF}>
+                        <FileType className="h-4 w-4 mr-2" />
+                        PDF (.pdf)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button 
                     onClick={handleCopy}
                     variant="outline"
                     className="flex-1"
                   >
-                    <Copy className="h-4 w-4" />
+                    <Copy className="h-4 w-4 mr-2" />
                     Copy
                   </Button>
                 </div>
