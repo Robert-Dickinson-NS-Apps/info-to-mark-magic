@@ -14,6 +14,8 @@ import { exportToHTML } from '@/utils/htmlExport';
 import { MarkdownPreview } from './MarkdownPreview';
 import { MarkdownEditor } from './MarkdownEditor';
 import { BatchExport, type SavedScrape } from './BatchExport';
+import { TemplateLibrary } from './TemplateLibrary';
+import type { MarkdownTemplate } from '@/utils/markdownTemplates';
 
 interface ScrapeStats {
   total: number;
@@ -279,6 +281,14 @@ export const ScraperForm = () => {
     });
   };
 
+  const handleApplyTemplate = (template: MarkdownTemplate) => {
+    setEditedMarkdown(template.template);
+    toast({
+      title: "Template Applied",
+      description: `${template.name} template has been applied to your content`,
+    });
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
       <div className="text-center space-y-2">
@@ -419,7 +429,8 @@ export const ScraperForm = () => {
                   </p>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                <TemplateLibrary onApplyTemplate={handleApplyTemplate} />
                 <Button onClick={handleSaveToBatch} variant="secondary" size="sm">
                   <Save className="mr-2 h-4 w-4" />
                   Save to Batch
