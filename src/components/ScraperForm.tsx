@@ -466,7 +466,7 @@ export const ScraperForm = () => {
                   Crawl Entire Sitemap
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Scrape all pages listed in sitemap.xml
+                  Scrape all pages in sitemap.xml (falls back to single page if not found)
                 </p>
               </div>
             </div>
