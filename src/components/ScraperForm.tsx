@@ -3,14 +3,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Download, Copy, Globe } from 'lucide-react';
+import { Loader2, Download, Copy, Globe, Eye, Code, Split } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import CodeEditor from '@uiw/react-textarea-code-editor';
+import { MarkdownPreview } from './MarkdownPreview';
+
+type ViewMode = 'edit' | 'preview' | 'split';
 
 export const ScraperForm = () => {
   const [url, setUrl] = useState('');
   const [markdown, setMarkdown] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('edit');
   const { toast } = useToast();
 
   const handleScrape = async () => {
@@ -150,23 +154,62 @@ export const ScraperForm = () => {
                   </Button>
                 </div>
 
-                <CodeEditor
-                  value={markdown}
-                  language="markdown"
-                  placeholder="Markdown content will appear here..."
-                  onChange={(e) => setMarkdown(e.target.value)}
-                  padding={15}
-                  style={{
-                    fontSize: 14,
-                    fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-                    minHeight: '500px',
-                    backgroundColor: 'hsl(var(--background))',
-                    color: 'hsl(var(--foreground))',
-                    borderRadius: '0.5rem',
-                    border: '1px solid hsl(var(--border))',
-                  }}
-                  className="w-full"
-                />
+                <div className="flex gap-2 justify-center border-b pb-2">
+                  <Button
+                    variant={viewMode === 'edit' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('edit')}
+                  >
+                    <Code className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant={viewMode === 'split' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('split')}
+                  >
+                    <Split className="h-4 w-4 mr-2" />
+                    Split
+                  </Button>
+                  <Button
+                    variant={viewMode === 'preview' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('preview')}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Preview
+                  </Button>
+                </div>
+
+                <div className={viewMode === 'split' ? 'grid grid-cols-2 gap-4' : ''}>
+                  {(viewMode === 'edit' || viewMode === 'split') && (
+                    <div className="min-h-[500px]">
+                      <CodeEditor
+                        value={markdown}
+                        language="markdown"
+                        placeholder="Markdown content will appear here..."
+                        onChange={(e) => setMarkdown(e.target.value)}
+                        padding={15}
+                        style={{
+                          fontSize: 14,
+                          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+                          minHeight: '500px',
+                          backgroundColor: 'hsl(var(--background))',
+                          color: 'hsl(var(--foreground))',
+                          borderRadius: '0.5rem',
+                          border: '1px solid hsl(var(--border))',
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+                  
+                  {(viewMode === 'preview' || viewMode === 'split') && (
+                    <div className="min-h-[500px] border border-border rounded-lg p-4 overflow-auto">
+                      <MarkdownPreview content={markdown} />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
