@@ -18,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { url, useSitemap = false, maxPages = MAX_PAGES, stream = false, autoDiscoverLinks = false } = await req.json();
+    const { url, useSitemap = false, maxPages = MAX_PAGES, stream = false, autoDiscoverLinks = false, customUrls = null } = await req.json();
 
     if (!url) {
       return new Response(
@@ -27,7 +27,119 @@ serve(async (req) => {
       );
     }
 
-    console.log('Fetching URL:', url, 'Use sitemap:', useSitemap, 'Auto-discover:', autoDiscoverLinks, 'Stream:', stream);
+    console.log('Fetching URL:', url, 'Use sitemap:', useSitemap, 'Auto-discover:', autoDiscoverLinks, 'Custom URLs:', customUrls?.length || 0, 'Stream:', stream);
+
+    // If custom URLs provided with streaming
+    if (customUrls && Array.isArray(customUrls) && customUrls.length > 0 && stream) {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            type: 'start', 
+            total: customUrls.length
+          })}\n\n`));
+
+          let combinedMarkdown = `# Scraped from ${url}\n\n`;
+          let successCount = 0;
+
+          for (let i = 0; i < customUrls.length; i++) {
+            const pageUrl = customUrls[i];
+            console.log(`Scraping custom URL ${i + 1}/${customUrls.length}: ${pageUrl}`);
+
+            try {
+              const markdown = await scrapeUrlToMarkdown(pageUrl);
+              combinedMarkdown += `\n---\n\n## ${pageUrl}\n\n${markdown}\n\n`;
+              successCount++;
+
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'progress',
+                current: i + 1,
+                total: customUrls.length,
+                url: pageUrl,
+                success: true
+              })}\n\n`));
+            } catch (error) {
+              console.error(`Failed to scrape ${pageUrl}:`, error);
+              combinedMarkdown += `\n---\n\n## ${pageUrl}\n\n*Failed to scrape this page*\n\n`;
+
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'progress',
+                current: i + 1,
+                total: customUrls.length,
+                url: pageUrl,
+                success: false
+              })}\n\n`));
+            }
+          }
+
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'complete',
+            markdown: combinedMarkdown,
+            stats: {
+              total: customUrls.length,
+              success: successCount,
+              failed: customUrls.length - successCount
+            }
+          })}\n\n`));
+
+          controller.close();
+        }
+      });
+
+      return new Response(stream, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        }
+      });
+    }
+
+    // If preview mode (no stream), just return discovered URLs
+    if ((useSitemap || autoDiscoverLinks) && !stream) {
+      let urls: string[];
+      let discoveryMethod: string;
+      
+      try {
+        if (autoDiscoverLinks) {
+          console.log('Discovering blog links from:', url);
+          urls = await discoverBlogLinks(url, maxPages);
+          discoveryMethod = urls.length > 0 ? 'Auto-discovery' : 'None';
+        } else {
+          urls = await fetchSitemapUrls(url, maxPages);
+          discoveryMethod = 'Sitemap';
+        }
+        
+        console.log(`Found ${urls.length} URLs via ${discoveryMethod}`);
+        
+        return new Response(
+          JSON.stringify({ 
+            urls, 
+            discoveryMethod,
+            total: urls.length 
+          }),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      } catch (error) {
+        console.warn('Discovery failed:', error);
+        return new Response(
+          JSON.stringify({ 
+            urls: [url], 
+            discoveryMethod: 'Fallback (single URL)',
+            total: 1,
+            error: error instanceof Error ? error.message : 'Discovery failed'
+          }),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
 
     // If auto-discover mode with streaming
     if (autoDiscoverLinks && stream) {

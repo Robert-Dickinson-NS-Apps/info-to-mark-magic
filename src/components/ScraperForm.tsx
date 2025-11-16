@@ -31,7 +31,14 @@ interface ProgressState {
   currentUrl: string;
 }
 
+interface DiscoveredUrls {
+  urls: string[];
+  discoveryMethod: string;
+  total: number;
+}
+
 const URL_HISTORY_KEY = 'scraper-url-history';
+const SAVED_URLS_KEY = 'scraper-saved-urls';
 const MAX_HISTORY_ITEMS = 10;
 
 export const ScraperForm = () => {
@@ -51,6 +58,9 @@ export const ScraperForm = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [urlValidation, setUrlValidation] = useState<UrlCheckResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [discoveredUrls, setDiscoveredUrls] = useState<DiscoveredUrls | null>(null);
+  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+  const [isDiscovering, setIsDiscovering] = useState(false);
   const { toast } = useToast();
 
   // Load URL history from localStorage on mount
@@ -69,6 +79,75 @@ export const ScraperForm = () => {
     const updated = [scrapedUrl, ...urlHistory.filter(u => u !== scrapedUrl)].slice(0, MAX_HISTORY_ITEMS);
     setUrlHistory(updated);
     localStorage.setItem(URL_HISTORY_KEY, JSON.stringify(updated));
+  };
+
+  const saveDiscoveredUrls = () => {
+    if (!discoveredUrls) return;
+    
+    const saved = {
+      baseUrl: url,
+      urls: discoveredUrls.urls,
+      discoveryMethod: discoveredUrls.discoveryMethod,
+      timestamp: new Date().toISOString()
+    };
+    
+    const existing = localStorage.getItem(SAVED_URLS_KEY);
+    const savedLists = existing ? JSON.parse(existing) : [];
+    savedLists.unshift(saved);
+    
+    // Keep only last 10 saved lists
+    localStorage.setItem(SAVED_URLS_KEY, JSON.stringify(savedLists.slice(0, 10)));
+    
+    toast({
+      title: "URLs Saved",
+      description: `Saved ${discoveredUrls.urls.length} URLs for future reference`,
+    });
+  };
+
+  const handleDiscover = async () => {
+    if (!url) {
+      toast({
+        title: "URL Required",
+        description: "Please enter a URL to discover links",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDiscovering(true);
+    setDiscoveredUrls(null);
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scrape-to-markdown`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url, useSitemap, autoDiscoverLinks, maxPages, stream: false }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to discover URLs');
+      }
+
+      const data = await response.json();
+      setDiscoveredUrls(data);
+      setSelectedUrls(new Set(data.urls)); // Select all by default
+      
+      toast({
+        title: "Discovery Complete",
+        description: `Found ${data.total} URLs via ${data.discoveryMethod}`,
+      });
+    } catch (error) {
+      console.error('Discovery error:', error);
+      toast({
+        title: "Discovery Failed",
+        description: error instanceof Error ? error.message : "Failed to discover URLs",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDiscovering(false);
+    }
   };
 
   // Validate URL when it changes
@@ -141,8 +220,73 @@ export const ScraperForm = () => {
     setToc([]);
     
     try {
-      // Use streaming for sitemap or auto-discover mode
-      if (useSitemap || autoDiscoverLinks) {
+      // If using discovery mode with selected URLs
+      if ((useSitemap || autoDiscoverLinks) && discoveredUrls && selectedUrls.size > 0) {
+        const urlsToScrape = Array.from(selectedUrls);
+        
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scrape-to-markdown`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            url, 
+            useSitemap: false, 
+            autoDiscoverLinks: false, 
+            customUrls: urlsToScrape,
+            stream: true 
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to scrape websites');
+        }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (!reader) {
+          throw new Error('No response body');
+        }
+
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.type === 'start') {
+                setProgress({ current: 0, total: data.total, currentUrl: '' });
+              } else if (data.type === 'progress') {
+                setProgress({ current: data.current, total: data.total, currentUrl: data.url });
+              } else if (data.type === 'complete') {
+                let finalMarkdown = data.markdown;
+                
+                if (addToc && useSitemap) {
+                  const tocItems = generateTableOfContents(finalMarkdown);
+                  setToc(tocItems);
+                  finalMarkdown = addTocToMarkdown(finalMarkdown, tocItems);
+                }
+                
+                setMarkdown(finalMarkdown);
+                setEditedMarkdown(finalMarkdown);
+                setStats(data.stats);
+                setProgress(null);
+                saveToHistory(url);
+              }
+            }
+          }
+        }
+      } else if (useSitemap || autoDiscoverLinks) {
+        // Use streaming for sitemap or auto-discover mode
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scrape-to-markdown`, {
           method: 'POST',
           headers: {
@@ -503,7 +647,7 @@ export const ScraperForm = () => {
                   </div>
                 )}
               </div>
-              <Button onClick={handleScrape} disabled={isLoading || !url || isValidating}>
+              <Button onClick={handleScrape} disabled={isLoading || !url || isValidating || ((useSitemap || autoDiscoverLinks) && !discoveredUrls)}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -513,6 +657,18 @@ export const ScraperForm = () => {
                   'Scrape'
                 )}
               </Button>
+              {(useSitemap || autoDiscoverLinks) && !discoveredUrls && (
+                <Button onClick={handleDiscover} disabled={isDiscovering || !url || isValidating} variant="outline">
+                  {isDiscovering ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Discovering...
+                    </>
+                  ) : (
+                    'Discover URLs'
+                  )}
+                </Button>
+              )}
             </div>
             
             {/* URL Validation Status */}
@@ -634,6 +790,98 @@ export const ScraperForm = () => {
             </>
           )}
         </div>
+
+        {/* Discovered URLs Panel */}
+        {discoveredUrls && (
+          <Card className="p-6 space-y-4 border-primary/20">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h3 className="font-semibold text-lg text-foreground">Discovered URLs</h3>
+                <p className="text-sm text-muted-foreground">
+                  Discovery Method: <span className="font-medium text-primary">{discoveredUrls.discoveryMethod}</span> • Found {discoveredUrls.total} URLs
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={saveDiscoveredUrls} variant="outline" size="sm">
+                  <Save className="mr-2 h-4 w-4" />
+                  Save List
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setDiscoveredUrls(null);
+                    setSelectedUrls(new Set());
+                  }} 
+                  variant="ghost" 
+                  size="sm"
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <Label className="text-sm font-medium">
+                  {selectedUrls.size} of {discoveredUrls.urls.length} URLs selected
+                </Label>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedUrls(new Set(discoveredUrls.urls))}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedUrls(new Set())}
+                  >
+                    Deselect All
+                  </Button>
+                </div>
+              </div>
+
+              <div className="max-h-96 overflow-y-auto space-y-2 p-4 bg-muted/30 rounded-lg">
+                {discoveredUrls.urls.map((discoveredUrl, index) => (
+                  <div key={index} className="flex items-start gap-3 p-2 hover:bg-muted/50 rounded transition-colors">
+                    <input
+                      type="checkbox"
+                      id={`url-${index}`}
+                      checked={selectedUrls.has(discoveredUrl)}
+                      onChange={(e) => {
+                        const newSelected = new Set(selectedUrls);
+                        if (e.target.checked) {
+                          newSelected.add(discoveredUrl);
+                        } else {
+                          newSelected.delete(discoveredUrl);
+                        }
+                        setSelectedUrls(newSelected);
+                      }}
+                      className="mt-1 h-4 w-4 rounded border-border"
+                    />
+                    <label htmlFor={`url-${index}`} className="flex-1 text-sm text-foreground break-all cursor-pointer">
+                      {discoveredUrl}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleScrape} disabled={isLoading || selectedUrls.size === 0}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Scraping {selectedUrls.size} URLs...
+                  </>
+                ) : (
+                  `Scrape ${selectedUrls.size} Selected URL${selectedUrls.size !== 1 ? 's' : ''}`
+                )}
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {progress && (
           <div className="space-y-2 p-4 bg-primary/5 rounded-lg border border-primary/20">
