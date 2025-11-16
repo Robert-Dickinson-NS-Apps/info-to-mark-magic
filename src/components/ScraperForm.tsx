@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Download, FileText, Globe, List, FileDown, Save, Code } from 'lucide-react';
+import { Loader2, Download, FileText, Globe, List, FileDown, Save, Code, Clock, ChevronDown } from 'lucide-react';
 import { generateTableOfContents, addTocToMarkdown, type TocItem } from '@/utils/markdownUtils';
 import { exportToPDF } from '@/utils/pdfExport';
 import { exportToHTML } from '@/utils/htmlExport';
@@ -29,6 +29,9 @@ interface ProgressState {
   currentUrl: string;
 }
 
+const URL_HISTORY_KEY = 'scraper-url-history';
+const MAX_HISTORY_ITEMS = 10;
+
 export const ScraperForm = () => {
   const [url, setUrl] = useState('');
   const [markdown, setMarkdown] = useState('');
@@ -41,7 +44,27 @@ export const ScraperForm = () => {
   const [addToc, setAddToc] = useState(true);
   const [toc, setToc] = useState<TocItem[]>([]);
   const [savedScrapes, setSavedScrapes] = useState<SavedScrape[]>([]);
+  const [urlHistory, setUrlHistory] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const { toast } = useToast();
+
+  // Load URL history from localStorage on mount
+  useState(() => {
+    const stored = localStorage.getItem(URL_HISTORY_KEY);
+    if (stored) {
+      try {
+        setUrlHistory(JSON.parse(stored));
+      } catch (e) {
+        console.error('Failed to parse URL history:', e);
+      }
+    }
+  });
+
+  const saveToHistory = (scrapedUrl: string) => {
+    const updated = [scrapedUrl, ...urlHistory.filter(u => u !== scrapedUrl)].slice(0, MAX_HISTORY_ITEMS);
+    setUrlHistory(updated);
+    localStorage.setItem(URL_HISTORY_KEY, JSON.stringify(updated));
+  };
 
   const handleScrape = async () => {
     if (!url) {
@@ -118,6 +141,7 @@ export const ScraperForm = () => {
                 setEditedMarkdown(finalMarkdown);
                 setStats(data.stats);
                 setProgress(null);
+                saveToHistory(url);
                 
                 toast({
                   title: "Success",
@@ -155,6 +179,7 @@ export const ScraperForm = () => {
         
         setMarkdown(finalMarkdown);
         setEditedMarkdown(finalMarkdown);
+        saveToHistory(url);
         
         if (data.stats) {
           setStats(data.stats);
@@ -305,15 +330,55 @@ export const ScraperForm = () => {
               Website URL
             </label>
             <div className="flex gap-2">
-              <Input
-                id="url"
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://example.com/help"
-                className="flex-1"
-                disabled={isLoading}
-              />
+              <div className="flex-1 relative">
+                <Input
+                  id="url"
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://example.com/help"
+                  className="pr-10"
+                  disabled={isLoading}
+                />
+                {urlHistory.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1 h-7 w-7 p-0"
+                    onClick={() => setShowHistory(!showHistory)}
+                    disabled={isLoading}
+                  >
+                    <Clock className="h-4 w-4" />
+                  </Button>
+                )}
+                {showHistory && urlHistory.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                    <div className="p-2 border-b border-border">
+                      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        Recent URLs
+                      </div>
+                    </div>
+                    <ul className="py-1">
+                      {urlHistory.map((historyUrl, index) => (
+                        <li key={index}>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors truncate"
+                            onClick={() => {
+                              setUrl(historyUrl);
+                              setShowHistory(false);
+                            }}
+                          >
+                            {historyUrl}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
               <Button onClick={handleScrape} disabled={isLoading || !url}>
                 {isLoading ? (
                   <>
