@@ -294,7 +294,36 @@ async function fetchSitemapUrls(baseUrl: string, maxPages: number): Promise<stri
 
 async function discoverBlogLinks(baseUrl: string, maxLinks: number): Promise<string[]> {
   try {
-    console.log('Fetching base page:', baseUrl);
+    // First, try to find and use sitemap
+    console.log('Attempting to discover links from sitemap first...');
+    try {
+      const sitemapUrls = await fetchSitemapUrls(baseUrl, maxLinks);
+      
+      // Filter sitemap URLs for blog/article patterns
+      const blogUrls = sitemapUrls.filter(url => {
+        const path = url.toLowerCase();
+        return path.includes('/blog/') ||
+          path.includes('/post/') ||
+          path.includes('/article/') ||
+          path.includes('/news/') ||
+          path.includes('/articles/') ||
+          path.includes('/posts/') ||
+          path.match(/\/\d{4}\/\d{2}\//) || // Date-based URLs
+          path.match(/\/\d{4}-\d{2}-\d{2}/); // Date URLs
+      });
+      
+      if (blogUrls.length > 0) {
+        console.log(`Found ${blogUrls.length} blog URLs from sitemap`);
+        return blogUrls.slice(0, maxLinks);
+      }
+      
+      console.log('No blog URLs found in sitemap, falling back to HTML parsing');
+    } catch (sitemapError) {
+      console.log('Sitemap not found or failed, falling back to HTML parsing:', sitemapError);
+    }
+    
+    // Fall back to HTML link discovery
+    console.log('Fetching base page for HTML parsing:', baseUrl);
     
     const response = await fetch(baseUrl, {
       headers: {
@@ -371,6 +400,7 @@ async function discoverBlogLinks(baseUrl: string, maxLinks: number): Promise<str
       throw new Error('No blog links found on the page');
     }
     
+    console.log(`Found ${urls.length} blog URLs from HTML parsing`);
     return urls;
   } catch (error) {
     console.error('Error discovering blog links:', error);
