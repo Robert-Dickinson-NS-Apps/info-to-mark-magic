@@ -31,8 +31,14 @@ serve(async (req) => {
 
     // If sitemap mode with streaming
     if (useSitemap && stream) {
-      const urls = await fetchSitemapUrls(url, maxPages);
-      console.log(`Found ${urls.length} URLs in sitemap`);
+      let urls: string[];
+      try {
+        urls = await fetchSitemapUrls(url, maxPages);
+        console.log(`Found ${urls.length} URLs in sitemap`);
+      } catch (error) {
+        console.warn('Sitemap fetch failed, falling back to single URL:', error);
+        urls = [url];
+      }
 
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
@@ -105,8 +111,14 @@ serve(async (req) => {
 
     // If sitemap mode without streaming
     if (useSitemap) {
-      const urls = await fetchSitemapUrls(url, maxPages);
-      console.log(`Found ${urls.length} URLs in sitemap`);
+      let urls: string[];
+      try {
+        urls = await fetchSitemapUrls(url, maxPages);
+        console.log(`Found ${urls.length} URLs in sitemap`);
+      } catch (error) {
+        console.warn('Sitemap fetch failed, falling back to single URL:', error);
+        urls = [url];
+      }
 
       let combinedMarkdown = `# Scraped from ${url}\n\n`;
       let successCount = 0;
