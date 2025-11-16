@@ -7,9 +7,10 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Download, FileText, Globe, List, FileDown, Save } from 'lucide-react';
+import { Loader2, Download, FileText, Globe, List, FileDown, Save, Code } from 'lucide-react';
 import { generateTableOfContents, addTocToMarkdown, type TocItem } from '@/utils/markdownUtils';
 import { exportToPDF } from '@/utils/pdfExport';
+import { exportToHTML } from '@/utils/htmlExport';
 import { MarkdownPreview } from './MarkdownPreview';
 import { MarkdownEditor } from './MarkdownEditor';
 import { BatchExport, type SavedScrape } from './BatchExport';
@@ -223,6 +224,30 @@ export const ScraperForm = () => {
     }
   };
 
+  const handleDownloadHTML = () => {
+    if (!editedMarkdown) return;
+
+    try {
+      exportToHTML({
+        markdown: editedMarkdown,
+        toc,
+        filename: 'scraped-content.html',
+        theme: 'light'
+      });
+
+      toast({
+        title: "Downloaded",
+        description: "HTML file saved successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate HTML",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSaveToBatch = () => {
     if (!markdown || !url) return;
 
@@ -402,6 +427,10 @@ export const ScraperForm = () => {
                 <Button onClick={handleDownload} variant="outline" size="sm">
                   <Download className="mr-2 h-4 w-4" />
                   Download MD
+                </Button>
+                <Button onClick={handleDownloadHTML} variant="outline" size="sm">
+                  <Code className="mr-2 h-4 w-4" />
+                  Export HTML
                 </Button>
                 <Button onClick={handleDownloadPDF} variant="default" size="sm">
                   <FileDown className="mr-2 h-4 w-4" />
