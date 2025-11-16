@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { FileDown, Trash2, Package } from 'lucide-react';
+import { FileDown, Trash2, Package, Code } from 'lucide-react';
 import { exportToPDF } from '@/utils/pdfExport';
+import { exportToHTML } from '@/utils/htmlExport';
 import type { TocItem } from '@/utils/markdownUtils';
 
 export interface SavedScrape {
@@ -70,6 +71,42 @@ export const BatchExport = ({ scrapes, onRemove, onClear }: BatchExportProps) =>
       toast({
         title: "Error",
         description: "Failed to export PDFs",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportSeparateHTML = () => {
+    if (selectedIds.length === 0) {
+      toast({
+        title: "No Selection",
+        description: "Please select scrapes to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      for (const id of selectedIds) {
+        const scrape = scrapes.find(s => s.id === id);
+        if (scrape) {
+          const urlPart = new URL(scrape.url).hostname.replace(/\./g, '-');
+          exportToHTML({
+            markdown: scrape.markdown,
+            toc: scrape.toc,
+            filename: `${urlPart}-${scrape.id}.html`
+          });
+        }
+      }
+
+      toast({
+        title: "Success",
+        description: `Exported ${selectedIds.length} HTML file(s) successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to export HTML files",
         variant: "destructive",
       });
     }
@@ -143,6 +180,74 @@ export const BatchExport = ({ scrapes, onRemove, onClear }: BatchExportProps) =>
     }
   };
 
+  const handleExportCombinedHTML = () => {
+    if (selectedIds.length === 0) {
+      toast({
+        title: "No Selection",
+        description: "Please select scrapes to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const selectedScrapes = scrapes.filter(s => selectedIds.includes(s.id));
+      
+      // Combine all markdown content
+      let combinedMarkdown = '# Combined Web Scrape Documentation\n\n';
+      combinedMarkdown += `Generated on: ${new Date().toLocaleDateString()}\n\n`;
+      combinedMarkdown += '## Table of Contents\n\n';
+      
+      // Add links to each section
+      selectedScrapes.forEach((scrape, idx) => {
+        const hostname = new URL(scrape.url).hostname;
+        combinedMarkdown += `${idx + 1}. [${hostname}](#section-${idx + 1})\n`;
+      });
+      
+      combinedMarkdown += '\n---\n\n';
+
+      // Add each scrape as a section
+      selectedScrapes.forEach((scrape, idx) => {
+        combinedMarkdown += `# Section ${idx + 1}: ${scrape.url} {#section-${idx + 1}}\n\n`;
+        combinedMarkdown += scrape.markdown;
+        combinedMarkdown += '\n\n---\n\n';
+      });
+
+      // Generate combined TOC
+      const combinedToc: TocItem[] = [];
+      selectedScrapes.forEach((scrape, idx) => {
+        combinedToc.push({
+          id: `section-${idx + 1}`,
+          text: `Section ${idx + 1}: ${new URL(scrape.url).hostname}`,
+          level: 1
+        });
+        scrape.toc.forEach(item => {
+          combinedToc.push({
+            ...item,
+            level: item.level + 1
+          });
+        });
+      });
+
+      exportToHTML({
+        markdown: combinedMarkdown,
+        toc: combinedToc,
+        filename: 'combined-scrapes.html'
+      });
+
+      toast({
+        title: "Success",
+        description: "Combined HTML file exported successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to export combined HTML",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (scrapes.length === 0) {
     return (
       <Card className="p-6 text-center">
@@ -199,24 +304,46 @@ export const BatchExport = ({ scrapes, onRemove, onClear }: BatchExportProps) =>
         ))}
       </div>
 
-      <div className="flex gap-2 pt-4 border-t border-border">
-        <Button
-          onClick={handleExportSeparate}
-          disabled={selectedIds.length === 0}
-          className="flex-1"
-          variant="outline"
-        >
-          <FileDown className="h-4 w-4 mr-2" />
-          Export Separate ({selectedIds.length})
-        </Button>
-        <Button
-          onClick={handleExportCombined}
-          disabled={selectedIds.length === 0}
-          className="flex-1"
-        >
-          <Package className="h-4 w-4 mr-2" />
-          Combine & Export ({selectedIds.length})
-        </Button>
+      <div className="flex flex-col gap-2 pt-4 border-t border-border">
+        <div className="flex gap-2">
+          <Button
+            onClick={handleExportSeparate}
+            disabled={selectedIds.length === 0}
+            className="flex-1"
+            variant="outline"
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            PDF Separate ({selectedIds.length})
+          </Button>
+          <Button
+            onClick={handleExportCombined}
+            disabled={selectedIds.length === 0}
+            className="flex-1"
+          >
+            <Package className="h-4 w-4 mr-2" />
+            PDF Combined ({selectedIds.length})
+          </Button>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleExportSeparateHTML}
+            disabled={selectedIds.length === 0}
+            className="flex-1"
+            variant="outline"
+          >
+            <Code className="h-4 w-4 mr-2" />
+            HTML Separate ({selectedIds.length})
+          </Button>
+          <Button
+            onClick={handleExportCombinedHTML}
+            disabled={selectedIds.length === 0}
+            className="flex-1"
+            variant="secondary"
+          >
+            <Code className="h-4 w-4 mr-2" />
+            HTML Combined ({selectedIds.length})
+          </Button>
+        </div>
       </div>
     </Card>
   );
