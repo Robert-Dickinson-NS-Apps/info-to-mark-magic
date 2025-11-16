@@ -7,10 +7,12 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Download, FileText, Globe, List, FileDown } from 'lucide-react';
+import { Loader2, Download, FileText, Globe, List, FileDown, Save } from 'lucide-react';
 import { generateTableOfContents, addTocToMarkdown, type TocItem } from '@/utils/markdownUtils';
 import { exportToPDF } from '@/utils/pdfExport';
 import { MarkdownPreview } from './MarkdownPreview';
+import { MarkdownEditor } from './MarkdownEditor';
+import { BatchExport, type SavedScrape } from './BatchExport';
 
 interface ScrapeStats {
   total: number;
@@ -27,6 +29,7 @@ interface ProgressState {
 export const ScraperForm = () => {
   const [url, setUrl] = useState('');
   const [markdown, setMarkdown] = useState('');
+  const [editedMarkdown, setEditedMarkdown] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [useSitemap, setUseSitemap] = useState(false);
   const [maxPages, setMaxPages] = useState(50);
@@ -34,6 +37,7 @@ export const ScraperForm = () => {
   const [progress, setProgress] = useState<ProgressState | null>(null);
   const [addToc, setAddToc] = useState(true);
   const [toc, setToc] = useState<TocItem[]>([]);
+  const [savedScrapes, setSavedScrapes] = useState<SavedScrape[]>([]);
   const { toast } = useToast();
 
   const handleScrape = async () => {
@@ -108,6 +112,7 @@ export const ScraperForm = () => {
                 }
                 
                 setMarkdown(finalMarkdown);
+                setEditedMarkdown(finalMarkdown);
                 setStats(data.stats);
                 setProgress(null);
                 
@@ -150,6 +155,7 @@ export const ScraperForm = () => {
         }
         
         setMarkdown(finalMarkdown);
+        setEditedMarkdown(finalMarkdown);
         
         if (data.stats) {
           setStats(data.stats);
@@ -176,9 +182,9 @@ export const ScraperForm = () => {
   };
 
   const handleDownload = () => {
-    if (!markdown) return;
+    if (!editedMarkdown) return;
 
-    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const blob = new Blob([editedMarkdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -195,11 +201,11 @@ export const ScraperForm = () => {
   };
 
   const handleDownloadPDF = async () => {
-    if (!markdown) return;
+    if (!editedMarkdown) return;
 
     try {
       await exportToPDF({
-        markdown,
+        markdown: editedMarkdown,
         toc,
         filename: 'scraped-content.pdf'
       });
@@ -217,6 +223,37 @@ export const ScraperForm = () => {
     }
   };
 
+  const handleSaveToBatch = () => {
+    if (!markdown || !url) return;
+
+    const newScrape: SavedScrape = {
+      id: Date.now().toString(),
+      url,
+      markdown: editedMarkdown,
+      toc,
+      timestamp: new Date(),
+    };
+
+    setSavedScrapes(prev => [...prev, newScrape]);
+
+    toast({
+      title: "Saved to Batch",
+      description: "Scrape added to batch export queue",
+    });
+  };
+
+  const handleRemoveScrape = (id: string) => {
+    setSavedScrapes(prev => prev.filter(s => s.id !== id));
+  };
+
+  const handleClearBatch = () => {
+    setSavedScrapes([]);
+    toast({
+      title: "Cleared",
+      description: "All scrapes removed from batch",
+    });
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
       <div className="text-center space-y-2">
@@ -226,6 +263,9 @@ export const ScraperForm = () => {
         </div>
         <p className="text-muted-foreground">Convert online help files to markdown format</p>
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">{/* ... keep existing code */}
 
       <Card className="p-6 space-y-4">
         <div className="space-y-4">
@@ -340,7 +380,7 @@ export const ScraperForm = () => {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <label className="text-sm font-medium text-foreground">
-                  Content Preview
+                  Content Preview & Editor
                 </label>
                 {stats && (
                   <p className="text-xs text-muted-foreground">
@@ -355,6 +395,10 @@ export const ScraperForm = () => {
                 )}
               </div>
               <div className="flex gap-2">
+                <Button onClick={handleSaveToBatch} variant="secondary" size="sm">
+                  <Save className="mr-2 h-4 w-4" />
+                  Save to Batch
+                </Button>
                 <Button onClick={handleDownload} variant="outline" size="sm">
                   <Download className="mr-2 h-4 w-4" />
                   Download MD
@@ -366,25 +410,34 @@ export const ScraperForm = () => {
               </div>
             </div>
 
-            <Tabs defaultValue="preview" className="w-full">
+            <Tabs defaultValue="editor" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="preview">Preview</TabsTrigger>
-                <TabsTrigger value="raw">Raw Markdown</TabsTrigger>
+                <TabsTrigger value="editor">Editor</TabsTrigger>
+                <TabsTrigger value="preview">Preview Only</TabsTrigger>
               </TabsList>
-              <TabsContent value="preview" className="mt-4">
-                <MarkdownPreview content={markdown} />
+              <TabsContent value="editor" className="mt-4">
+                <MarkdownEditor
+                  initialContent={editedMarkdown}
+                  onContentChange={setEditedMarkdown}
+                />
               </TabsContent>
-              <TabsContent value="raw" className="mt-4">
-                <div className="bg-muted p-4 rounded-lg border border-border overflow-auto max-h-[600px]">
-                  <pre className="text-sm font-mono whitespace-pre-wrap break-words">
-                    {markdown}
-                  </pre>
-                </div>
+              <TabsContent value="preview" className="mt-4">
+                <MarkdownPreview content={editedMarkdown} />
               </TabsContent>
             </Tabs>
           </div>
         )}
       </Card>
     </div>
+
+    <div className="lg:col-span-1">
+      <BatchExport
+        scrapes={savedScrapes}
+        onRemove={handleRemoveScrape}
+        onClear={handleClearBatch}
+      />
+    </div>
+  </div>
+</div>
   );
 };
