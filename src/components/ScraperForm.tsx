@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Download, Copy, Eye, Code, Split, FileText, FileCode, FileType } from 'lucide-react';
+import { Loader2, Download, Copy, Eye, Code, Split, FileText, FileCode, FileType, Droplets } from 'lucide-react';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import { MarkdownPreview } from './MarkdownPreview';
 import { Textarea } from '@/components/ui/textarea';
@@ -249,10 +249,11 @@ export const ScraperForm = () => {
     <div className="container max-w-6xl mx-auto px-4">
       <div className="text-center mb-12">
         <div className="flex items-center justify-center gap-3 mb-4">
-          <FileCode className="h-10 w-10 text-primary animate-pulse" />
+          <Droplets className="h-10 w-10 text-primary animate-pulse" />
           <h1 className="text-5xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-            HTML to Markdown Converter
+            BobSWMM HTML to Markdown Converter
           </h1>
+          <FileCode className="h-10 w-10 text-primary animate-pulse" />
         </div>
         <p className="text-muted-foreground text-lg">
           Paste HTML content and convert it to clean, formatted markdown for BobSWMM
