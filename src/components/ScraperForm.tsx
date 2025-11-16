@@ -24,6 +24,7 @@ export const ScraperForm = () => {
   const [url, setUrl] = useState('');
   const [markdown, setMarkdown] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('edit');
   const { toast } = useToast();
 
@@ -43,8 +44,14 @@ export const ScraperForm = () => {
 
     setIsLoading(true);
     setMarkdown('');
+    setLoadingStatus('Connecting to URL...');
 
     try {
+      // Simulate progress updates
+      setTimeout(() => setLoadingStatus('Fetching page content...'), 500);
+      setTimeout(() => setLoadingStatus('Parsing HTML structure...'), 1000);
+      setTimeout(() => setLoadingStatus('Converting to markdown...'), 1500);
+
       const { data, error } = await supabase.functions.invoke('scrape-to-markdown', {
         body: { url: validation.data }
       });
@@ -52,6 +59,7 @@ export const ScraperForm = () => {
       if (error) throw error;
 
       if (data?.markdown) {
+        setLoadingStatus('Finalizing...');
         setMarkdown(data.markdown);
         toast({
           title: "Success",
@@ -68,6 +76,7 @@ export const ScraperForm = () => {
       });
     } finally {
       setIsLoading(false);
+      setLoadingStatus('');
     }
   };
 
@@ -148,7 +157,22 @@ export const ScraperForm = () => {
               </Button>
             </div>
 
-            {markdown && (
+            {isLoading && (
+              <div className="border border-border rounded-lg p-8 space-y-4">
+                <div className="flex items-center justify-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <p className="text-sm font-medium text-foreground">{loadingStatus}</p>
+                </div>
+                <div className="space-y-3">
+                  <div className="h-4 bg-muted rounded animate-pulse" />
+                  <div className="h-4 bg-muted rounded animate-pulse w-5/6" />
+                  <div className="h-4 bg-muted rounded animate-pulse w-4/6" />
+                  <div className="h-4 bg-muted rounded animate-pulse w-3/6" />
+                </div>
+              </div>
+            )}
+
+            {markdown && !isLoading && (
               <div className="space-y-4">
                 <div className="flex gap-2">
                   <Button 
