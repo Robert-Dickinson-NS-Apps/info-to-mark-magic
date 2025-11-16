@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -7,11 +7,12 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Download, FileText, Globe, List, FileDown, Save, Code, Clock, ChevronDown, FileJson, FileCode } from 'lucide-react';
+import { Loader2, Download, FileText, Globe, List, FileDown, Save, Code, Clock, ChevronDown, FileJson, FileCode, AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 import { generateTableOfContents, addTocToMarkdown, type TocItem } from '@/utils/markdownUtils';
 import { exportToPDF } from '@/utils/pdfExport';
 import { exportToHTML } from '@/utils/htmlExport';
 import { exportToXmlSitemap } from '@/utils/xmlExport';
+import { validateUrlFormat, checkUrlReachability, type UrlCheckResult } from '@/utils/urlValidation';
 import { MarkdownPreview } from './MarkdownPreview';
 import { MarkdownEditor } from './MarkdownEditor';
 import { BatchExport, type SavedScrape } from './BatchExport';
@@ -47,6 +48,8 @@ export const ScraperForm = () => {
   const [savedScrapes, setSavedScrapes] = useState<SavedScrape[]>([]);
   const [urlHistory, setUrlHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [urlValidation, setUrlValidation] = useState<UrlCheckResult | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
   const { toast } = useToast();
 
   // Load URL history from localStorage on mount
@@ -67,6 +70,42 @@ export const ScraperForm = () => {
     localStorage.setItem(URL_HISTORY_KEY, JSON.stringify(updated));
   };
 
+  // Validate URL when it changes
+  useEffect(() => {
+    const validateUrl = async () => {
+      if (!url.trim()) {
+        setUrlValidation(null);
+        return;
+      }
+
+      // Quick format check
+      const formatCheck = validateUrlFormat(url);
+      if (!formatCheck.valid) {
+        setUrlValidation({
+          isValid: false,
+          isReachable: false,
+          error: formatCheck.error
+        });
+        return;
+      }
+
+      // Debounce the reachability check
+      setIsValidating(true);
+      const timeoutId = setTimeout(async () => {
+        const result = await checkUrlReachability(url);
+        setUrlValidation(result);
+        setIsValidating(false);
+      }, 800);
+
+      return () => {
+        clearTimeout(timeoutId);
+        setIsValidating(false);
+      };
+    };
+
+    validateUrl();
+  }, [url]);
+
   const handleScrape = async () => {
     if (!url) {
       toast({
@@ -75,6 +114,24 @@ export const ScraperForm = () => {
         variant: "destructive",
       });
       return;
+    }
+
+    // Check URL validation
+    if (urlValidation && !urlValidation.isValid) {
+      toast({
+        title: "Invalid URL",
+        description: urlValidation.error || "Please enter a valid URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Show warning if URL is not reachable but allow scraping
+    if (urlValidation && !urlValidation.isReachable && urlValidation.warning) {
+      toast({
+        title: "Warning",
+        description: urlValidation.warning,
+      });
     }
 
     setIsLoading(true);
@@ -445,7 +502,7 @@ export const ScraperForm = () => {
                   </div>
                 )}
               </div>
-              <Button onClick={handleScrape} disabled={isLoading || !url}>
+              <Button onClick={handleScrape} disabled={isLoading || !url || isValidating}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -456,6 +513,37 @@ export const ScraperForm = () => {
                 )}
               </Button>
             </div>
+            
+            {/* URL Validation Status */}
+            {url && (
+              <div className="flex items-center gap-2 text-sm animate-fade-in">
+                {isValidating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <span className="text-muted-foreground">Checking URL...</span>
+                  </>
+                ) : urlValidation ? (
+                  <>
+                    {urlValidation.isValid && urlValidation.isReachable ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-green-600 dark:text-green-400">URL is accessible</span>
+                      </>
+                    ) : !urlValidation.isValid ? (
+                      <>
+                        <AlertCircle className="h-4 w-4 text-destructive" />
+                        <span className="text-destructive">{urlValidation.error}</span>
+                      </>
+                    ) : urlValidation.warning ? (
+                      <>
+                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                        <span className="text-yellow-600 dark:text-yellow-400">{urlValidation.warning}</span>
+                      </>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
