@@ -348,7 +348,12 @@ export const ScraperForm = () => {
         <div className="space-y-6">
           <Card className="p-6 bg-card/50 backdrop-blur-sm border-2 shadow-lg">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-foreground">Result</h2>
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Result</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {markdown.length.toLocaleString()} characters · {markdown.split(/\s+/).filter(word => word.length > 0).length.toLocaleString()} words
+                </p>
+              </div>
               <div className="flex gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
