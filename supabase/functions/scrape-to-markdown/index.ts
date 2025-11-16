@@ -7,6 +7,37 @@ const corsHeaders = {
 
 const MAX_PAGES = 50; // Limit to prevent abuse
 const MAX_CUSTOM_URLS = 100; // Maximum URLs in custom list
+const MAX_REQUESTS_PER_HOUR = 100; // Rate limit per IP
+
+// In-memory rate limiting
+const requestCounts = new Map<string, { count: number; hour: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const hour = Math.floor(now / 3600000);
+  const key = `${ip}:${hour}`;
+  
+  const existing = requestCounts.get(key);
+  
+  if (existing && existing.hour === hour) {
+    if (existing.count >= MAX_REQUESTS_PER_HOUR) {
+      console.warn(`Rate limit exceeded for IP: ${ip}`);
+      return false;
+    }
+    existing.count++;
+  } else {
+    requestCounts.set(key, { count: 1, hour });
+  }
+  
+  // Clean up old entries
+  for (const [k, v] of requestCounts.entries()) {
+    if (v.hour < hour - 1) {
+      requestCounts.delete(k);
+    }
+  }
+  
+  return true;
+}
 
 interface SitemapUrl {
   loc: string;
