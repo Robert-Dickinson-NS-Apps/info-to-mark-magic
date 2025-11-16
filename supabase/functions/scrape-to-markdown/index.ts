@@ -480,20 +480,24 @@ async function fetchSitemapUrls(baseUrl: string, maxPages: number): Promise<stri
   const parsedUrl = new URL(baseUrl);
   const sitemapUrl = `${parsedUrl.protocol}//${parsedUrl.host}/sitemap.xml`;
   
-  console.log('Fetching sitemap from:', sitemapUrl);
+  console.log('[SITEMAP] Fetching sitemap from:', sitemapUrl);
 
   try {
     const response = await fetch(sitemapUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; RubyInfoScrapper/1.0)',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Accept': 'application/xml,text/xml,application/xhtml+xml,text/html;q=0.9,*/*;q=0.8',
       },
     });
 
+    console.log(`[SITEMAP] Response status: ${response.status}`);
+
     if (!response.ok) {
-      throw new Error(`Sitemap not found at ${sitemapUrl}`);
+      throw new Error(`Sitemap not found at ${sitemapUrl} (${response.status} ${response.statusText})`);
     }
 
     const sitemapXml = await response.text();
+    console.log(`[SITEMAP] Received XML length: ${sitemapXml.length} characters`);
     
     // Parse XML to extract URLs
     const urlMatches = sitemapXml.matchAll(/<loc>(.*?)<\/loc>/g);
@@ -504,13 +508,15 @@ async function fetchSitemapUrls(baseUrl: string, maxPages: number): Promise<stri
       urls.push(match[1]);
     }
 
+    console.log(`[SITEMAP] Extracted ${urls.length} URLs from sitemap`);
+
     if (urls.length === 0) {
       throw new Error('No URLs found in sitemap');
     }
 
     return urls;
   } catch (error) {
-    console.error('Error fetching sitemap:', error);
+    console.error('[SITEMAP] Error fetching sitemap:', error);
     throw new Error(`Failed to fetch sitemap: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -546,19 +552,24 @@ async function discoverBlogLinks(baseUrl: string, maxLinks: number): Promise<str
     }
     
     // Fall back to HTML link discovery
-    console.log('Fetching base page for HTML parsing:', baseUrl);
+    console.log('[DISCOVER] Fetching base page for HTML parsing:', baseUrl);
     
     const response = await fetch(baseUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; RubyInfoScrapper/1.0)',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
       },
     });
+
+    console.log(`[DISCOVER] Response status: ${response.status}`);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch page: ${response.statusText}`);
     }
 
     const html = await response.text();
+    console.log(`[DISCOVER] Received HTML length: ${html.length} characters`);
     const links = new Set<string>();
     
     // Extract all links from the HTML
@@ -619,45 +630,106 @@ async function discoverBlogLinks(baseUrl: string, maxLinks: number): Promise<str
     
     const urls = Array.from(links).slice(0, maxLinks);
     
+    console.log(`[DISCOVER] Found ${urls.length} blog URLs from HTML parsing`);
+    
     if (urls.length === 0) {
+      console.warn('[DISCOVER] No blog links found on the page');
       throw new Error('No blog links found on the page');
     }
     
-    console.log(`Found ${urls.length} blog URLs from HTML parsing`);
     return urls;
   } catch (error) {
-    console.error('Error discovering blog links:', error);
+    console.error('[DISCOVER] Error discovering blog links:', error);
     throw new Error(`Failed to discover blog links: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 async function scrapeUrlToMarkdown(url: string): Promise<string> {
+  console.log(`[SCRAPE] Starting scrape for: ${url}`);
+  
   const response = await fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; RubyInfoScrapper/1.0)',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
     },
   });
 
+  console.log(`[SCRAPE] Response status: ${response.status} ${response.statusText}`);
+  console.log(`[SCRAPE] Content-Type: ${response.headers.get('content-type')}`);
+
   if (!response.ok) {
-    throw new Error(`Failed to fetch URL: ${response.statusText}`);
+    const errorMsg = `Failed to fetch URL: ${response.status} ${response.statusText}`;
+    console.error(`[SCRAPE] ${errorMsg}`);
+    throw new Error(errorMsg);
   }
 
   const html = await response.text();
+  const htmlLength = html.length;
+  
+  console.log(`[SCRAPE] Received HTML length: ${htmlLength} characters`);
+  console.log(`[SCRAPE] HTML preview (first 500 chars): ${html.substring(0, 500)}`);
+  
+  // Log if HTML appears to be minimal (likely JavaScript-rendered)
+  if (htmlLength < 5000) {
+    console.warn(`[SCRAPE] WARNING: HTML is suspiciously short (${htmlLength} chars). This page may be JavaScript-rendered.`);
+  }
 
-  // Convert HTML to markdown (basic conversion)
-  let markdown = html
+  // Try to extract main content intelligently
+  let contentHtml = html;
+  
+  // Look for common content container patterns
+  const mainContentPatterns = [
+    /<main[^>]*>(.*?)<\/main>/gis,
+    /<article[^>]*>(.*?)<\/article>/gis,
+    /<div[^>]*class="[^"]*content[^"]*"[^>]*>(.*?)<\/div>/gis,
+    /<div[^>]*id="[^"]*content[^"]*"[^>]*>(.*?)<\/div>/gis,
+    /<div[^>]*class="[^"]*main[^"]*"[^>]*>(.*?)<\/div>/gis,
+    /<div[^>]*id="[^"]*main[^"]*"[^>]*>(.*?)<\/div>/gis,
+  ];
+
+  for (const pattern of mainContentPatterns) {
+    const matches = html.match(pattern);
+    if (matches && matches[0]) {
+      console.log(`[SCRAPE] Found main content using pattern: ${pattern.source.substring(0, 50)}...`);
+      contentHtml = matches[0];
+      break;
+    }
+  }
+
+  // If no main content found, log warning
+  if (contentHtml === html) {
+    console.warn(`[SCRAPE] Could not identify main content area, using full HTML`);
+  }
+
+  // Convert HTML to markdown with improved parsing
+  let markdown = contentHtml
     // Remove script and style tags
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
+    // Remove comments
+    .replace(/<!--[\s\S]*?-->/g, '')
     // Convert headings
-    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
-    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
-    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
-    .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
-    .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n')
-    .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n')
+    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n# $1\n\n')
+    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n## $1\n\n')
+    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n### $1\n\n')
+    .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '\n#### $1\n\n')
+    .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '\n##### $1\n\n')
+    .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '\n###### $1\n\n')
     // Convert links
-    .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+    .replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+    // Convert images
+    .replace(/<img[^>]*alt=["']([^"']*)["'][^>]*src=["']([^"']*)["'][^>]*>/gi, '![$1]($2)')
+    .replace(/<img[^>]*src=["']([^"']*)["'][^>]*alt=["']([^"']*)["'][^>]*>/gi, '![$2]($1)')
+    .replace(/<img[^>]*src=["']([^"']*)["'][^>]*>/gi, '![]($1)')
+    // Convert code blocks
+    .replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gis, '\n```\n$1\n```\n')
+    .replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
+    .replace(/<pre[^>]*>(.*?)<\/pre>/gis, '\n```\n$1\n```\n')
     // Convert bold and italic
     .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
     .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
@@ -669,10 +741,16 @@ async function scrapeUrlToMarkdown(url: string): Promise<string> {
     .replace(/<\/ul>/gi, '\n')
     .replace(/<ol[^>]*>/gi, '\n')
     .replace(/<\/ol>/gi, '\n')
+    // Convert blockquotes
+    .replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, '\n> $1\n')
+    // Convert div and section to spacing
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/section>/gi, '\n')
     // Convert paragraphs
     .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
     // Convert line breaks
-    .replace(/<br[^>]*>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<hr\s*\/?>/gi, '\n---\n')
     // Remove remaining HTML tags
     .replace(/<[^>]+>/g, '')
     // Decode HTML entities
@@ -682,9 +760,29 @@ async function scrapeUrlToMarkdown(url: string): Promise<string> {
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&ldquo;/g, '"')
+    .replace(/&rdquo;/g, '"')
+    .replace(/&lsquo;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&mdash;/g, '—')
+    .replace(/&ndash;/g, '–')
+    // Clean up whitespace
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
     // Clean up multiple newlines
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+
+  const markdownLength = markdown.length;
+  console.log(`[SCRAPE] Generated markdown length: ${markdownLength} characters`);
+  console.log(`[SCRAPE] Markdown preview (first 500 chars): ${markdown.substring(0, 500)}`);
+  
+  // Warn if markdown is too short
+  if (markdownLength < 100) {
+    console.warn(`[SCRAPE] WARNING: Generated markdown is very short (${markdownLength} chars). Content extraction may have failed.`);
+    console.warn(`[SCRAPE] This often happens with JavaScript-heavy sites that require browser rendering.`);
+  }
 
   return markdown;
 }
