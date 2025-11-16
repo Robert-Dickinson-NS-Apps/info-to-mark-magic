@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Download, FileText, Globe, List } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2, Download, FileText, Globe, List, FileDown } from 'lucide-react';
 import { generateTableOfContents, addTocToMarkdown, type TocItem } from '@/utils/markdownUtils';
+import { exportToPDF } from '@/utils/pdfExport';
+import { MarkdownPreview } from './MarkdownPreview';
 
 interface ScrapeStats {
   total: number;
@@ -192,6 +194,29 @@ export const ScraperForm = () => {
     });
   };
 
+  const handleDownloadPDF = async () => {
+    if (!markdown) return;
+
+    try {
+      await exportToPDF({
+        markdown,
+        toc,
+        filename: 'scraped-content.pdf'
+      });
+
+      toast({
+        title: "Downloaded",
+        description: "PDF file saved successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
       <div className="text-center space-y-2">
@@ -315,7 +340,7 @@ export const ScraperForm = () => {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <label className="text-sm font-medium text-foreground">
-                  Markdown Preview
+                  Content Preview
                 </label>
                 {stats && (
                   <p className="text-xs text-muted-foreground">
@@ -329,16 +354,34 @@ export const ScraperForm = () => {
                   </p>
                 )}
               </div>
-              <Button onClick={handleDownload} variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" />
-                Download MD
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={handleDownload} variant="outline" size="sm">
+                  <Download className="mr-2 h-4 w-4" />
+                  Download MD
+                </Button>
+                <Button onClick={handleDownloadPDF} variant="default" size="sm">
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Export PDF
+                </Button>
+              </div>
             </div>
-            <Textarea
-              value={markdown}
-              readOnly
-              className="min-h-[400px] font-mono text-sm"
-            />
+
+            <Tabs defaultValue="preview" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="preview">Preview</TabsTrigger>
+                <TabsTrigger value="raw">Raw Markdown</TabsTrigger>
+              </TabsList>
+              <TabsContent value="preview" className="mt-4">
+                <MarkdownPreview content={markdown} />
+              </TabsContent>
+              <TabsContent value="raw" className="mt-4">
+                <div className="bg-muted p-4 rounded-lg border border-border overflow-auto max-h-[600px]">
+                  <pre className="text-sm font-mono whitespace-pre-wrap break-words">
+                    {markdown}
+                  </pre>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         )}
       </Card>
