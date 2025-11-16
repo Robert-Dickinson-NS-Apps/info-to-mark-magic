@@ -40,6 +40,7 @@ export const ScraperForm = () => {
   const [editedMarkdown, setEditedMarkdown] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [useSitemap, setUseSitemap] = useState(false);
+  const [autoDiscoverLinks, setAutoDiscoverLinks] = useState(false);
   const [maxPages, setMaxPages] = useState(50);
   const [stats, setStats] = useState<ScrapeStats | null>(null);
   const [progress, setProgress] = useState<ProgressState | null>(null);
@@ -140,14 +141,14 @@ export const ScraperForm = () => {
     setToc([]);
     
     try {
-      // Use streaming for sitemap mode
-      if (useSitemap) {
+      // Use streaming for sitemap or auto-discover mode
+      if (useSitemap || autoDiscoverLinks) {
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scrape-to-markdown`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ url, useSitemap, maxPages, stream: true }),
+          body: JSON.stringify({ url, useSitemap, autoDiscoverLinks, maxPages, stream: true }),
         });
 
         if (!response.ok) {
@@ -561,16 +562,42 @@ export const ScraperForm = () => {
             <Switch
               id="sitemap-mode"
               checked={useSitemap}
-              onCheckedChange={setUseSitemap}
-              disabled={isLoading}
+              onCheckedChange={(checked) => {
+                setUseSitemap(checked);
+                if (checked) setAutoDiscoverLinks(false);
+              }}
+              disabled={isLoading || autoDiscoverLinks}
             />
           </div>
 
-          {useSitemap && (
+          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <List className="h-5 w-5 text-primary" />
+              <div className="space-y-0.5">
+                <Label htmlFor="auto-discover-mode" className="font-medium">
+                  Auto-Discover Blog Posts
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Find and scrape all blog/article links from the page
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="auto-discover-mode"
+              checked={autoDiscoverLinks}
+              onCheckedChange={(checked) => {
+                setAutoDiscoverLinks(checked);
+                if (checked) setUseSitemap(false);
+              }}
+              disabled={isLoading || useSitemap}
+            />
+          </div>
+
+          {(useSitemap || autoDiscoverLinks) && (
             <>
               <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
                 <Label htmlFor="max-pages" className="text-sm font-medium">
-                  Max Pages to Scrape: {maxPages}
+                  Max {autoDiscoverLinks ? 'Links' : 'Pages'} to Scrape: {maxPages}
                 </Label>
                 <Input
                   id="max-pages"
@@ -583,25 +610,27 @@ export const ScraperForm = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <List className="h-5 w-5 text-primary" />
-                  <div className="space-y-0.5">
-                    <Label htmlFor="toc-mode" className="font-medium">
-                      Generate Table of Contents
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Automatically add navigation links
-                    </p>
+              {useSitemap && (
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <List className="h-5 w-5 text-primary" />
+                    <div className="space-y-0.5">
+                      <Label htmlFor="toc-mode" className="font-medium">
+                        Generate Table of Contents
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Automatically add navigation links
+                      </p>
+                    </div>
                   </div>
+                  <Switch
+                    id="toc-mode"
+                    checked={addToc}
+                    onCheckedChange={setAddToc}
+                    disabled={isLoading}
+                  />
                 </div>
-                <Switch
-                  id="toc-mode"
-                  checked={addToc}
-                  onCheckedChange={setAddToc}
-                  disabled={isLoading}
-                />
-              </div>
+              )}
             </>
           )}
         </div>
@@ -610,7 +639,7 @@ export const ScraperForm = () => {
           <div className="space-y-2 p-4 bg-primary/5 rounded-lg border border-primary/20">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium text-foreground">
-                Scraping Progress: {progress.current} / {progress.total}
+                {autoDiscoverLinks ? 'Discovering & Scraping Blog Posts' : 'Scraping Progress'}: {progress.current} / {progress.total}
               </span>
               <span className="text-muted-foreground">
                 {Math.round((progress.current / progress.total) * 100)}%
