@@ -1,1 +1,4 @@
 project_id = "evzhqncqhityotzodfsp"
+
+[functions.scrape-to-markdown]
+verify_jwt = false
