@@ -1,9 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export const WorkflowDiagram = () => {
   const mermaidRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     mermaid.initialize({ 
@@ -53,18 +57,31 @@ export const WorkflowDiagram = () => {
   `;
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle>How It Works</CardTitle>
-        <CardDescription>
-          Follow this workflow to convert multiple pages into a single markdown document
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div ref={mermaidRef} className="mermaid bg-background p-4 rounded-md overflow-x-auto">
-          {diagram}
-        </div>
-      </CardContent>
-    </Card>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mb-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>How It Works</CardTitle>
+              <CardDescription>
+                Follow this workflow to convert multiple pages into a single markdown document
+              </CardDescription>
+            </div>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm">
+                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent>
+            <div ref={mermaidRef} className="mermaid bg-background p-4 rounded-md overflow-x-auto">
+              {diagram}
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 };
