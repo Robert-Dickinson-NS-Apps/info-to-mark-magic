@@ -158,8 +158,8 @@ serve(async (req) => {
             console.log(`Scraping custom URL ${i + 1}/${customUrls.length}: ${pageUrl}`);
 
             try {
-              const markdown = await scrapeUrlToMarkdown(pageUrl);
-              combinedMarkdown += `\n---\n\n## ${pageUrl}\n\n${markdown}\n\n`;
+              const result = await scrapeUrlToMarkdown(pageUrl);
+              combinedMarkdown += `\n---\n\n## ${pageUrl}\n\n${result.markdown}\n\n`;
               successCount++;
 
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -282,8 +282,8 @@ serve(async (req) => {
             console.log(`Scraping blog post ${i + 1}/${urls.length}: ${pageUrl}`);
 
             try {
-              const markdown = await scrapeUrlToMarkdown(pageUrl);
-              combinedMarkdown += `\n---\n\n## ${pageUrl}\n\n${markdown}\n\n`;
+              const result = await scrapeUrlToMarkdown(pageUrl);
+              combinedMarkdown += `\n---\n\n## ${pageUrl}\n\n${result.markdown}\n\n`;
               successCount++;
 
               // Send progress update
@@ -362,8 +362,8 @@ serve(async (req) => {
             console.log(`Scraping page ${i + 1}/${urls.length}: ${pageUrl}`);
 
             try {
-              const markdown = await scrapeUrlToMarkdown(pageUrl);
-              combinedMarkdown += `\n---\n\n## Page: ${pageUrl}\n\n${markdown}\n\n`;
+              const result = await scrapeUrlToMarkdown(pageUrl);
+              combinedMarkdown += `\n---\n\n## Page: ${pageUrl}\n\n${result.markdown}\n\n`;
               successCount++;
 
               // Send progress update
@@ -433,8 +433,8 @@ serve(async (req) => {
         console.log(`Scraping page ${i + 1}/${urls.length}: ${pageUrl}`);
 
         try {
-          const markdown = await scrapeUrlToMarkdown(pageUrl);
-          combinedMarkdown += `\n---\n\n## Page: ${pageUrl}\n\n${markdown}\n\n`;
+          const result = await scrapeUrlToMarkdown(pageUrl);
+          combinedMarkdown += `\n---\n\n## Page: ${pageUrl}\n\n${result.markdown}\n\n`;
           successCount++;
         } catch (error) {
           console.error(`Failed to scrape ${pageUrl}:`, error);
@@ -460,10 +460,10 @@ serve(async (req) => {
     // Single page mode
     console.log('Scraping single page:', url);
 
-    const markdown = await scrapeUrlToMarkdown(url);
+    const result = await scrapeUrlToMarkdown(url);
 
     return new Response(
-      JSON.stringify({ markdown }),
+      JSON.stringify({ markdown: result.markdown, html: result.html }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
@@ -644,7 +644,7 @@ async function discoverBlogLinks(baseUrl: string, maxLinks: number): Promise<str
   }
 }
 
-async function scrapeUrlToMarkdown(url: string): Promise<string> {
+async function scrapeUrlToMarkdown(url: string): Promise<{ markdown: string; html: string }> {
   console.log(`[SCRAPE] Starting scrape for: ${url}`);
   
   const response = await fetch(url, {
@@ -784,5 +784,5 @@ async function scrapeUrlToMarkdown(url: string): Promise<string> {
     console.warn(`[SCRAPE] This often happens with JavaScript-heavy sites that require browser rendering.`);
   }
 
-  return markdown;
+  return { markdown, html: contentHtml };
 }

@@ -28,7 +28,7 @@ import { exportToHTML } from '@/utils/htmlExport';
 import { generateTableOfContents } from '@/utils/markdownUtils';
 import { convertHtmlToMarkdown } from '@/utils/htmlToMarkdown';
 
-type ViewMode = 'edit' | 'preview' | 'split';
+type ViewMode = 'edit' | 'preview' | 'split' | 'source';
 
 export const ScraperForm = () => {
   const [url, setUrl] = useState('');
@@ -39,6 +39,7 @@ export const ScraperForm = () => {
   const [useManualPaste, setUseManualPaste] = useState(false);
   const [sectionTitle, setSectionTitle] = useState('');
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const [sourceHtml, setSourceHtml] = useState('');
   const { toast } = useToast();
 
   const handleFetchUrl = async () => {
@@ -67,9 +68,11 @@ export const ScraperForm = () => {
 
       const data = await response.json();
       const convertedMarkdown = data.markdown || data.content;
+      const rawHtml = data.html || '';
       const titlePrefix = sectionTitle.trim() ? `# ${sectionTitle.trim()}\n\n` : '';
       const fullContent = titlePrefix + convertedMarkdown;
       setMarkdown(prev => prev ? prev + '\n\n---\n\n' + fullContent : fullContent);
+      setSourceHtml(prev => prev ? prev + '\n\n<!-- Section Separator -->\n\n' + rawHtml : rawHtml);
       setSectionTitle('');
       
       if (convertedMarkdown.length < 100) {
@@ -443,6 +446,14 @@ export const ScraperForm = () => {
                 <Eye className="h-4 w-4 mr-1" />
                 Preview
               </Button>
+              <Button
+                variant={viewMode === 'source' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('source')}
+              >
+                <FileCode className="h-4 w-4 mr-1" />
+                Source
+              </Button>
             </div>
 
             {viewMode === 'edit' && (
@@ -491,6 +502,24 @@ export const ScraperForm = () => {
                 </div>
               </div>
             )}
+
+            {viewMode === 'source' && (
+              <div className="border border-border rounded-lg overflow-hidden bg-muted/30">
+                <CodeEditor
+                  value={sourceHtml}
+                  language="html"
+                  placeholder="Original HTML source will appear here after conversion..."
+                  readOnly
+                  padding={15}
+                  data-color-mode="dark"
+                  style={{
+                    fontSize: 13,
+                    fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+                    minHeight: '500px',
+                  }}
+                />
+              </div>
+            )}
           </Card>
         </div>
       )}
@@ -507,6 +536,7 @@ export const ScraperForm = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               setMarkdown('');
+              setSourceHtml('');
               toast({
                 title: "Cleared",
                 description: "All content has been cleared",
