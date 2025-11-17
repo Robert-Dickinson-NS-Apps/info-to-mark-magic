@@ -7,6 +7,7 @@ import { Loader2, Download, Copy, Eye, Code, Split, FileText, FileCode, FileType
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import { MarkdownPreview } from './MarkdownPreview';
 import { Textarea } from '@/components/ui/textarea';
+import { CodeViewerWithLineNumbers } from './CodeViewerWithLineNumbers';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -527,7 +528,7 @@ export const ScraperForm = () => {
                   <div>
                     <h3 className="text-sm font-medium text-foreground">Original HTML Source</h3>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Read-only view of the source HTML
+                      Read-only view of the source HTML with line numbers
                     </p>
                   </div>
                   <Button onClick={handleCopySource} variant="outline" size="sm" disabled={!sourceHtml}>
@@ -535,20 +536,14 @@ export const ScraperForm = () => {
                     Copy HTML
                   </Button>
                 </div>
-                <div className="border border-border rounded-lg overflow-hidden bg-muted/30">
-                  <CodeEditor
-                    value={sourceHtml}
-                    language="html"
-                    placeholder="Original HTML source will appear here after conversion..."
-                    readOnly
-                    padding={15}
-                    data-color-mode="dark"
-                    style={{
-                      fontSize: 13,
-                      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-                      minHeight: '500px',
-                    }}
-                  />
+                <div className="max-h-[600px] overflow-auto">
+                  {sourceHtml ? (
+                    <CodeViewerWithLineNumbers code={sourceHtml} language="html" />
+                  ) : (
+                    <div className="border border-border rounded-lg p-8 bg-muted/30 text-center text-muted-foreground">
+                      Original HTML source will appear here after conversion...
+                    </div>
+                  )}
                 </div>
               </div>
             )}
