@@ -87,7 +87,7 @@ export const WorkflowDiagram = () => {
           </div>
         </CardHeader>
         <CollapsibleContent>
-          <CardContent>
+          <CardContent className="animate-accordion-down">
             <div 
               key={diagramKey}
               ref={mermaidRef} 

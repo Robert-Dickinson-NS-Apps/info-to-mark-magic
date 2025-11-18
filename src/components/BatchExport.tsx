@@ -55,10 +55,11 @@ export const BatchExport = ({ scrapes, onRemove, onClear }: BatchExportProps) =>
         const scrape = scrapes.find(s => s.id === id);
         if (scrape) {
           const urlPart = new URL(scrape.url).hostname.replace(/\./g, '-');
+          const timestamp = new Date().toISOString().slice(0, 10);
           await exportToPDF({
             markdown: scrape.markdown,
             toc: scrape.toc,
-            filename: `${urlPart}-${scrape.id}.pdf`
+            filename: `${urlPart}-${timestamp}-${scrape.id.slice(0, 8)}.pdf`
           });
         }
       }
@@ -161,10 +162,11 @@ export const BatchExport = ({ scrapes, onRemove, onClear }: BatchExportProps) =>
         });
       });
 
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
       await exportToPDF({
         markdown: combinedMarkdown,
         toc: combinedToc,
-        filename: 'combined-scrapes.pdf'
+        filename: `combined-scrapes-${timestamp}.pdf`
       });
 
       toast({
