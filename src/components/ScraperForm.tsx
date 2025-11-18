@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Download, Copy, Eye, Code, Split, FileText, FileCode, FileType, Droplets } from 'lucide-react';
+import { Loader2, Download, Copy, Eye, Code, Split, FileText, FileCode, FileType, Droplets, FileDown } from 'lucide-react';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import { MarkdownPreview } from './MarkdownPreview';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,6 +28,7 @@ import { exportToPDF } from '@/utils/pdfExport';
 import { exportToHTML } from '@/utils/htmlExport';
 import { generateTableOfContents } from '@/utils/markdownUtils';
 import { convertHtmlToMarkdown } from '@/utils/htmlToMarkdown';
+import jsPDF from 'jspdf';
 
 type ViewMode = 'edit' | 'preview' | 'split' | 'source';
 
@@ -297,6 +298,57 @@ export const ScraperForm = () => {
     });
   };
 
+  const handleDownloadSourceAsPdf = () => {
+    if (!sourceHtml) return;
+
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+    let currentY = margin;
+
+    // Add title
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('HTML Source Code', margin, currentY);
+    currentY += 10;
+
+    pdf.setFontSize(9);
+    pdf.setFont('courier', 'normal');
+
+    // Split HTML into lines and add to PDF
+    const lines = sourceHtml.split('\n');
+    
+    for (const line of lines) {
+      // Split long lines to fit page width
+      const wrappedLines = pdf.splitTextToSize(line || ' ', contentWidth);
+      
+      for (const wrappedLine of wrappedLines) {
+        // Check if we need a new page
+        if (currentY + 5 > pageHeight - margin) {
+          pdf.addPage();
+          currentY = margin;
+        }
+        
+        pdf.text(wrappedLine, margin, currentY);
+        currentY += 4;
+      }
+    }
+
+    pdf.save('source.pdf');
+
+    toast({
+      title: "Downloaded",
+      description: "HTML source saved as PDF successfully",
+    });
+  };
+
   return (
     <div className="container max-w-6xl mx-auto px-4">
       <div className="text-center mb-12">
@@ -551,6 +603,10 @@ export const ScraperForm = () => {
                     </p>
                   </div>
                   <div className="flex gap-2">
+                    <Button onClick={handleDownloadSourceAsPdf} variant="outline" size="sm" disabled={!sourceHtml}>
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Download PDF
+                    </Button>
                     <Button onClick={handleDownloadSource} variant="outline" size="sm" disabled={!sourceHtml}>
                       <Download className="h-4 w-4 mr-2" />
                       Download HTML
