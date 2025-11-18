@@ -225,10 +225,15 @@ export const ScraperForm = () => {
 
     try {
       const toc = generateTableOfContents(markdown);
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const filename = url 
+        ? `${new URL(url).hostname.replace(/\./g, '-')}-${timestamp}.pdf`
+        : `content-${timestamp}.pdf`;
+      
       await exportToPDF({
         markdown,
         toc,
-        filename: 'content.pdf',
+        filename,
       });
 
       toast({
