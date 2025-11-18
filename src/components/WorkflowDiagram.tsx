@@ -8,25 +8,36 @@ import { Button } from '@/components/ui/button';
 export const WorkflowDiagram = () => {
   const mermaidRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [diagramKey, setDiagramKey] = useState(0);
 
   useEffect(() => {
+    // Get CSS variable values from the document
+    const getHslValue = (cssVar: string) => {
+      const value = getComputedStyle(document.documentElement)
+        .getPropertyValue(cssVar)
+        .trim();
+      return value ? `hsl(${value})` : '#4A90E2';
+    };
+
+    const primaryColor = getHslValue('--primary');
+    const accentColor = getHslValue('--accent');
+
     mermaid.initialize({ 
       startOnLoad: true, 
-      theme: 'default',
+      theme: 'base',
       themeVariables: {
-        primaryColor: '#4A90E2',
+        primaryColor: primaryColor,
         primaryTextColor: '#ffffff',
-        primaryBorderColor: '#4A90E2',
+        primaryBorderColor: primaryColor,
         lineColor: '#A0AEC0',
-        secondaryColor: '#E2E8F0',
+        secondaryColor: accentColor,
         tertiaryColor: '#E2E8F0',
       }
     });
 
-    if (mermaidRef.current) {
-      mermaid.contentLoaded();
-    }
-  }, []);
+    // Force re-render after initialization
+    setDiagramKey(prev => prev + 1);
+  }, [isOpen]);
 
   const diagram = `
     graph TD
@@ -51,9 +62,10 @@ export const WorkflowDiagram = () => {
       N --> P
       O --> P
       
-      style A fill:hsl(var(--primary)),stroke:hsl(var(--primary)),color:#fff
-      style P fill:hsl(var(--primary)),stroke:hsl(var(--primary)),color:#fff
-      style I fill:hsl(var(--accent)),stroke:hsl(var(--accent))
+      classDef startEnd fill:#4A90E2,stroke:#4A90E2,color:#fff
+      classDef accent fill:#E2E8F0,stroke:#E2E8F0
+      class A,P startEnd
+      class I accent
   `;
 
   return (
@@ -76,7 +88,11 @@ export const WorkflowDiagram = () => {
         </CardHeader>
         <CollapsibleContent>
           <CardContent>
-            <div ref={mermaidRef} className="mermaid bg-background p-4 rounded-md overflow-x-auto">
+            <div 
+              key={diagramKey}
+              ref={mermaidRef} 
+              className="mermaid bg-background p-4 rounded-md overflow-x-auto"
+            >
               {diagram}
             </div>
           </CardContent>
