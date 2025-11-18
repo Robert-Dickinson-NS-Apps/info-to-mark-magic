@@ -16,6 +16,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -54,6 +61,7 @@ export const ScraperForm = () => {
   const [sourceHtml, setSourceHtml] = useState('');
   const [showPdfDialog, setShowPdfDialog] = useState(false);
   const [pdfFilename, setPdfFilename] = useState('');
+  const [sectionHeadingLevel, setSectionHeadingLevel] = useState('2');
   const { toast } = useToast();
 
   const handleFetchUrl = async () => {
@@ -73,7 +81,10 @@ export const ScraperForm = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ 
+          url: url.trim(),
+          sectionHeadingLevel: parseInt(sectionHeadingLevel)
+        }),
       });
 
       if (!response.ok) {
@@ -126,7 +137,7 @@ export const ScraperForm = () => {
     setIsLoading(true);
 
     try {
-      const convertedMarkdown = convertHtmlToMarkdown(htmlContent);
+      const convertedMarkdown = convertHtmlToMarkdown(htmlContent, parseInt(sectionHeadingLevel));
       
       if (!convertedMarkdown || convertedMarkdown.length < 10) {
         toast({
@@ -398,6 +409,9 @@ export const ScraperForm = () => {
             <label className="text-sm font-medium text-foreground">
               Enter URL or Paste HTML
             </label>
+            <label className="block text-sm font-medium mb-2">
+              Section Title (Optional)
+            </label>
             <Input
               type="text"
               placeholder="Section title (optional)"
@@ -405,6 +419,22 @@ export const ScraperForm = () => {
               onChange={(e) => setSectionTitle(e.target.value)}
               className="mb-3"
             />
+            
+            <label className="block text-sm font-medium mb-2">
+              Section Heading Level
+            </label>
+            <Select value={sectionHeadingLevel} onValueChange={setSectionHeadingLevel}>
+              <SelectTrigger className="mb-3">
+                <SelectValue placeholder="Select heading level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="2">H2 (##)</SelectItem>
+                <SelectItem value="3">H3 (###)</SelectItem>
+                <SelectItem value="4">H4 (####)</SelectItem>
+                <SelectItem value="5">H5 (#####)</SelectItem>
+                <SelectItem value="6">H6 (######)</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="flex gap-2 mb-3">
               <Button
                 variant={!useManualPaste ? "default" : "outline"}

@@ -117,7 +117,7 @@ serve(async (req) => {
       );
     }
 
-    const { url, useSitemap = false, maxPages = MAX_PAGES, stream = false, autoDiscoverLinks = false, customUrls = null } = await req.json();
+    const { url, useSitemap = false, maxPages = MAX_PAGES, stream = false, autoDiscoverLinks = false, customUrls = null, sectionHeadingLevel = 2 } = await req.json();
     
     console.log(`[${new Date().toISOString()}] Scraping request from IP: ${clientIP}, URL: ${url}, maxPages: ${maxPages}`);
 
@@ -158,7 +158,7 @@ serve(async (req) => {
             console.log(`Scraping custom URL ${i + 1}/${customUrls.length}: ${pageUrl}`);
 
             try {
-              const result = await scrapeUrlToMarkdown(pageUrl);
+              const result = await scrapeUrlToMarkdown(pageUrl, sectionHeadingLevel);
               combinedMarkdown += `\n---\n\n## ${pageUrl}\n\n${result.markdown}\n\n`;
               successCount++;
 
@@ -282,7 +282,7 @@ serve(async (req) => {
             console.log(`Scraping blog post ${i + 1}/${urls.length}: ${pageUrl}`);
 
             try {
-              const result = await scrapeUrlToMarkdown(pageUrl);
+              const result = await scrapeUrlToMarkdown(pageUrl, sectionHeadingLevel);
               combinedMarkdown += `\n---\n\n## ${pageUrl}\n\n${result.markdown}\n\n`;
               successCount++;
 
@@ -362,7 +362,7 @@ serve(async (req) => {
             console.log(`Scraping page ${i + 1}/${urls.length}: ${pageUrl}`);
 
             try {
-              const result = await scrapeUrlToMarkdown(pageUrl);
+              const result = await scrapeUrlToMarkdown(pageUrl, sectionHeadingLevel);
               combinedMarkdown += `\n---\n\n## Page: ${pageUrl}\n\n${result.markdown}\n\n`;
               successCount++;
 
@@ -433,7 +433,7 @@ serve(async (req) => {
         console.log(`Scraping page ${i + 1}/${urls.length}: ${pageUrl}`);
 
         try {
-          const result = await scrapeUrlToMarkdown(pageUrl);
+          const result = await scrapeUrlToMarkdown(pageUrl, sectionHeadingLevel);
           combinedMarkdown += `\n---\n\n## Page: ${pageUrl}\n\n${result.markdown}\n\n`;
           successCount++;
         } catch (error) {
@@ -460,7 +460,7 @@ serve(async (req) => {
     // Single page mode
     console.log('Scraping single page:', url);
 
-    const result = await scrapeUrlToMarkdown(url);
+    const result = await scrapeUrlToMarkdown(url, sectionHeadingLevel);
 
     return new Response(
       JSON.stringify({ markdown: result.markdown, html: result.html }),
@@ -644,7 +644,7 @@ async function discoverBlogLinks(baseUrl: string, maxLinks: number): Promise<str
   }
 }
 
-async function scrapeUrlToMarkdown(url: string): Promise<{ markdown: string; html: string }> {
+async function scrapeUrlToMarkdown(url: string, sectionHeadingLevel: number = 2): Promise<{ markdown: string; html: string }> {
   console.log(`[SCRAPE] Starting scrape for: ${url}`);
   
   const response = await fetch(url, {
@@ -706,6 +706,7 @@ async function scrapeUrlToMarkdown(url: string): Promise<{ markdown: string; htm
   }
 
   // Convert HTML to markdown with improved parsing
+  const headingPrefix = '#'.repeat(sectionHeadingLevel);
   let markdown = contentHtml
     // Remove script and style tags
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -714,7 +715,7 @@ async function scrapeUrlToMarkdown(url: string): Promise<{ markdown: string; htm
     // Remove comments
     .replace(/<!--[\s\S]*?-->/g, '')
     // Convert section tags with aria-label or data-title attributes to headings
-    .replace(/<section[^>]*(?:aria-label|data-title)=["']([^"']*)["'][^>]*>/gi, '\n## $1\n')
+    .replace(/<section[^>]*(?:aria-label|data-title)=["']([^"']*)["'][^>]*>/gi, `\n${headingPrefix} $1\n`)
     .replace(/<section[^>]*>/gi, '\n')
     // Convert headings
     .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n# $1\n\n')
