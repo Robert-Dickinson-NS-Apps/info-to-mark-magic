@@ -8,6 +8,7 @@ import CodeEditor from '@uiw/react-textarea-code-editor';
 import { MarkdownPreview } from './MarkdownPreview';
 import { Textarea } from '@/components/ui/textarea';
 import { CodeViewerWithLineNumbers } from './CodeViewerWithLineNumbers';
+import { ComparisonView } from './ComparisonView';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -639,52 +640,11 @@ export const ScraperForm = () => {
             )}
 
             {viewMode === 'comparison' && (
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground">HTML to Markdown Comparison</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Side-by-side view of original HTML and converted markdown
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="mb-2">
-                      <p className="text-xs font-medium text-muted-foreground">Original HTML</p>
-                    </div>
-                    <div className="max-h-[600px] overflow-auto">
-                      {sourceHtml ? (
-                        <CodeViewerWithLineNumbers code={sourceHtml} language="html" />
-                      ) : (
-                        <div className="border border-border rounded-lg p-8 bg-muted/30 text-center text-muted-foreground text-sm">
-                          No HTML source available
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="mb-2">
-                      <p className="text-xs font-medium text-muted-foreground">Converted Markdown</p>
-                    </div>
-                    <div className="border border-border rounded-lg overflow-hidden bg-muted/30 max-h-[600px] overflow-auto">
-                      <CodeEditor
-                        value={markdown}
-                        language="markdown"
-                        placeholder="Converted markdown..."
-                        onChange={(e) => setMarkdown(e.target.value)}
-                        padding={15}
-                        data-color-mode="dark"
-                        style={{
-                          fontSize: 13,
-                          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-                          minHeight: '600px',
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <ComparisonView 
+                sourceHtml={sourceHtml}
+                markdown={markdown}
+                onMarkdownChange={setMarkdown}
+              />
             )}
           </Card>
         </div>
