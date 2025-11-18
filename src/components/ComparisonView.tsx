@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Highlighter } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Highlighter, Search, X, Split } from 'lucide-react';
 import { CodeViewerWithLineNumbers } from './CodeViewerWithLineNumbers';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 
@@ -12,8 +13,29 @@ interface ComparisonViewProps {
 
 export const ComparisonView = ({ sourceHtml, markdown, onMarkdownChange }: ComparisonViewProps) => {
   const [highlightMode, setHighlightMode] = useState(false);
-  const [selectedHtmlRange, setSelectedHtmlRange] = useState<{ start: number; end: number } | null>(null);
-  const [selectedMdRange, setSelectedMdRange] = useState<{ start: number; end: number } | null>(null);
+  const [selectedHtmlRange, setSelectedHtmlRange] = useState<{ start: number; end: number; score: number } | null>(null);
+  const [selectedMdRange, setSelectedMdRange] = useState<{ start: number; end: number; score: number } | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchMatches, setSearchMatches] = useState<{ html: number[]; markdown: number[] }>({ html: [], markdown: [] });
+  const htmlScrollRef = useRef<HTMLDivElement>(null);
+  const mdScrollRef = useRef<HTMLDivElement>(null);
+  const [isSyncScrolling, setIsSyncScrolling] = useState(true);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Get color based on match confidence score
+  const getMatchColor = (score: number, totalWords: number) => {
+    const confidence = score / totalWords;
+    if (confidence >= 0.7) return 'rgba(34, 197, 94, 0.25)'; // Green - high confidence
+    if (confidence >= 0.5) return 'rgba(234, 179, 8, 0.25)'; // Yellow - medium confidence
+    return 'rgba(249, 115, 22, 0.25)'; // Orange - low confidence
+  };
+
+  const getMatchLabel = (score: number, totalWords: number) => {
+    const confidence = score / totalWords;
+    if (confidence >= 0.7) return 'High confidence match';
+    if (confidence >= 0.5) return 'Medium confidence match';
+    return 'Low confidence match';
+  };
 
   // Find text in markdown that corresponds to HTML selection
   const findCorrespondingMarkdown = (htmlText: string) => {
@@ -45,12 +67,12 @@ export const ComparisonView = ({ sourceHtml, markdown, onMarkdownChange }: Compa
         bestMatch = {
           start: i,
           end: Math.min(i + cleanText.length * 2, mdLower.length),
-          score
+          score: score / words.length
         };
       }
     }
     
-    return bestMatch.score > 0 ? { start: bestMatch.start, end: bestMatch.end } : null;
+    return bestMatch.score > 0 ? { start: bestMatch.start, end: bestMatch.end, score: bestMatch.score } : null;
   };
 
   // Find HTML that corresponds to markdown selection
@@ -80,12 +102,71 @@ export const ComparisonView = ({ sourceHtml, markdown, onMarkdownChange }: Compa
         bestMatch = {
           start: i,
           end: Math.min(i + cleanMdText.length * 3, htmlLower.length),
-          score
+          score: score / words.length
         };
       }
     }
     
-    return bestMatch.score > 0 ? { start: bestMatch.start, end: bestMatch.end } : null;
+    return bestMatch.score > 0 ? { start: bestMatch.start, end: bestMatch.end, score: bestMatch.score } : null;
+  };
+
+  // Search functionality
+  useEffect(() => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setSearchMatches({ html: [], markdown: [] });
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const htmlMatches: number[] = [];
+    const mdMatches: number[] = [];
+
+    // Find in HTML
+    let htmlIndex = sourceHtml.toLowerCase().indexOf(searchLower);
+    while (htmlIndex !== -1) {
+      htmlMatches.push(htmlIndex);
+      htmlIndex = sourceHtml.toLowerCase().indexOf(searchLower, htmlIndex + 1);
+    }
+
+    // Find in Markdown
+    let mdIndex = markdown.toLowerCase().indexOf(searchLower);
+    while (mdIndex !== -1) {
+      mdMatches.push(mdIndex);
+      mdIndex = markdown.toLowerCase().indexOf(searchLower, mdIndex + 1);
+    }
+
+    setSearchMatches({ html: htmlMatches, markdown: mdMatches });
+  }, [searchTerm, sourceHtml, markdown]);
+
+  // Synchronized scrolling
+  const handleHtmlScroll = () => {
+    if (!isSyncScrolling || !htmlScrollRef.current || !mdScrollRef.current) return;
+    
+    clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = setTimeout(() => {
+      if (htmlScrollRef.current && mdScrollRef.current) {
+        const scrollPercentage = htmlScrollRef.current.scrollTop / 
+          (htmlScrollRef.current.scrollHeight - htmlScrollRef.current.clientHeight);
+        
+        mdScrollRef.current.scrollTop = scrollPercentage * 
+          (mdScrollRef.current.scrollHeight - mdScrollRef.current.clientHeight);
+      }
+    }, 10);
+  };
+
+  const handleMdScroll = () => {
+    if (!isSyncScrolling || !htmlScrollRef.current || !mdScrollRef.current) return;
+    
+    clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = setTimeout(() => {
+      if (htmlScrollRef.current && mdScrollRef.current) {
+        const scrollPercentage = mdScrollRef.current.scrollTop / 
+          (mdScrollRef.current.scrollHeight - mdScrollRef.current.clientHeight);
+        
+        htmlScrollRef.current.scrollTop = scrollPercentage * 
+          (htmlScrollRef.current.scrollHeight - htmlScrollRef.current.clientHeight);
+      }
+    }, 10);
   };
 
   const handleHtmlSelection = () => {
@@ -131,51 +212,138 @@ export const ComparisonView = ({ sourceHtml, markdown, onMarkdownChange }: Compa
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-3">
-        <div>
-          <h3 className="text-sm font-medium text-foreground">HTML to Markdown Comparison</h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            {highlightMode 
-              ? "Select text in one panel to highlight the corresponding section in the other"
-              : "Side-by-side view of original HTML and converted markdown"
-            }
-          </p>
+      <div className="space-y-3 mb-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-sm font-medium text-foreground">HTML to Markdown Comparison</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              {highlightMode 
+                ? "Select text in one panel to see color-coded matches in the other"
+                : "Side-by-side view of original HTML and converted markdown"
+              }
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant={isSyncScrolling ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsSyncScrolling(!isSyncScrolling)}
+            >
+              <Split className="h-4 w-4 mr-2" />
+              {isSyncScrolling ? "Sync On" : "Sync Off"}
+            </Button>
+            <Button
+              variant={highlightMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setHighlightMode(!highlightMode);
+                setSelectedHtmlRange(null);
+                setSelectedMdRange(null);
+              }}
+            >
+              <Highlighter className="h-4 w-4 mr-2" />
+              {highlightMode ? "Highlighting On" : "Highlighting Off"}
+            </Button>
+          </div>
         </div>
-        <Button
-          variant={highlightMode ? "default" : "outline"}
-          size="sm"
-          onClick={() => {
-            setHighlightMode(!highlightMode);
-            setSelectedHtmlRange(null);
-            setSelectedMdRange(null);
-          }}
-        >
-          <Highlighter className="h-4 w-4 mr-2" />
-          {highlightMode ? "Highlighting Active" : "Enable Highlighting"}
-        </Button>
+        
+        {/* Search bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search across both panels..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-10"
+          />
+          {searchTerm && (
+            <>
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="absolute right-12 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
+                {searchMatches.html.length + searchMatches.markdown.length} matches
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Match confidence legend */}
+        {highlightMode && (selectedHtmlRange || selectedMdRange) && (
+          <div className="flex items-center gap-4 p-2 bg-muted/50 rounded-lg text-xs">
+            <span className="font-medium text-foreground">Match Confidence:</span>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(34, 197, 94, 0.5)' }} />
+              <span className="text-muted-foreground">High (70%+)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(234, 179, 8, 0.5)' }} />
+              <span className="text-muted-foreground">Medium (50-70%)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(249, 115, 22, 0.5)' }} />
+              <span className="text-muted-foreground">Low (&lt;50%)</span>
+            </div>
+            {selectedMdRange && (
+              <span className="ml-auto text-foreground font-medium">
+                Current: {getMatchLabel(selectedMdRange.score, 1)}
+              </span>
+            )}
+            {selectedHtmlRange && !selectedMdRange && (
+              <span className="ml-auto text-foreground font-medium">
+                Current: {getMatchLabel(selectedHtmlRange.score, 1)}
+              </span>
+            )}
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <div className="mb-2">
+          <div className="mb-2 flex items-center justify-between">
             <p className="text-xs font-medium text-muted-foreground">
-              Original HTML {highlightMode && "(Click & select text to highlight)"}
+              Original HTML {highlightMode && "(Select text to highlight)"}
             </p>
+            {searchMatches.html.length > 0 && (
+              <span className="text-xs text-primary font-medium">
+                {searchMatches.html.length} {searchMatches.html.length === 1 ? 'match' : 'matches'}
+              </span>
+            )}
           </div>
           <div 
+            ref={htmlScrollRef}
             className={`max-h-[600px] overflow-auto ${highlightMode ? 'cursor-text' : ''}`}
             onMouseUp={handleHtmlSelection}
+            onScroll={handleHtmlScroll}
           >
             {sourceHtml ? (
-              <div className={selectedHtmlRange ? 'relative' : ''}>
+              <div className="relative">
                 <CodeViewerWithLineNumbers code={sourceHtml} language="html" />
-                {selectedHtmlRange && (
+                {selectedHtmlRange && highlightMode && (
                   <div 
-                    className="absolute inset-0 pointer-events-none"
+                    className="absolute inset-0 pointer-events-none rounded"
                     style={{
-                      background: `linear-gradient(transparent ${selectedHtmlRange.start / sourceHtml.length * 100}%, rgba(var(--primary) / 0.2) ${selectedHtmlRange.start / sourceHtml.length * 100}%, rgba(var(--primary) / 0.2) ${selectedHtmlRange.end / sourceHtml.length * 100}%, transparent ${selectedHtmlRange.end / sourceHtml.length * 100}%)`
+                      background: `linear-gradient(transparent ${selectedHtmlRange.start / sourceHtml.length * 100}%, ${getMatchColor(selectedHtmlRange.score, 1)} ${selectedHtmlRange.start / sourceHtml.length * 100}%, ${getMatchColor(selectedHtmlRange.score, 1)} ${selectedHtmlRange.end / sourceHtml.length * 100}%, transparent ${selectedHtmlRange.end / sourceHtml.length * 100}%)`
                     }}
                   />
                 )}
+                {searchMatches.html.map((matchIndex, i) => {
+                  const matchLength = searchTerm.length;
+                  const startPercent = (matchIndex / sourceHtml.length) * 100;
+                  const endPercent = ((matchIndex + matchLength) / sourceHtml.length) * 100;
+                  return (
+                    <div 
+                      key={`html-match-${i}`}
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background: `linear-gradient(transparent ${startPercent}%, rgba(59, 130, 246, 0.3) ${startPercent}%, rgba(59, 130, 246, 0.3) ${endPercent}%, transparent ${endPercent}%)`
+                      }}
+                    />
+                  );
+                })}
               </div>
             ) : (
               <div className="border border-border rounded-lg p-8 bg-muted/30 text-center text-muted-foreground text-sm">
@@ -185,14 +353,21 @@ export const ComparisonView = ({ sourceHtml, markdown, onMarkdownChange }: Compa
           </div>
         </div>
         <div>
-          <div className="mb-2">
+          <div className="mb-2 flex items-center justify-between">
             <p className="text-xs font-medium text-muted-foreground">
               Converted Markdown {highlightMode && "(Select text to find in HTML)"}
             </p>
+            {searchMatches.markdown.length > 0 && (
+              <span className="text-xs text-primary font-medium">
+                {searchMatches.markdown.length} {searchMatches.markdown.length === 1 ? 'match' : 'matches'}
+              </span>
+            )}
           </div>
           <div 
-            className="border border-border rounded-lg overflow-hidden bg-muted/30 max-h-[600px] overflow-auto"
+            ref={mdScrollRef}
+            className="border border-border rounded-lg overflow-hidden bg-muted/30 max-h-[600px] overflow-auto relative"
             onMouseUp={handleMarkdownSelection}
+            onScroll={handleMdScroll}
           >
             <CodeEditor
               value={markdown}
@@ -207,17 +382,17 @@ export const ComparisonView = ({ sourceHtml, markdown, onMarkdownChange }: Compa
                 minHeight: '600px',
               }}
             />
+            {selectedMdRange && highlightMode && (
+              <div 
+                className="absolute inset-0 pointer-events-none rounded"
+                style={{
+                  background: `linear-gradient(transparent ${selectedMdRange.start / markdown.length * 100}%, ${getMatchColor(selectedMdRange.score, 1)} ${selectedMdRange.start / markdown.length * 100}%, ${getMatchColor(selectedMdRange.score, 1)} ${selectedMdRange.end / markdown.length * 100}%, transparent ${selectedMdRange.end / markdown.length * 100}%)`
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
-      {highlightMode && (selectedHtmlRange || selectedMdRange) && (
-        <div className="mt-3 p-3 bg-primary/10 border border-primary/20 rounded-lg">
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Tip:</span> Highlighted sections show the approximate correspondence between HTML and Markdown. 
-            The matching algorithm looks for similar text content across both formats.
-          </p>
-        </div>
-      )}
     </div>
   );
 };
