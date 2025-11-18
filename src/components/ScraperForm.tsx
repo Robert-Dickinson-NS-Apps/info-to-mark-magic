@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Download, Copy, Eye, Code, Split, FileText, FileCode, FileType, Droplets, FileDown, Columns } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import { MarkdownPreview } from './MarkdownPreview';
 import { Textarea } from '@/components/ui/textarea';
@@ -62,6 +63,7 @@ export const ScraperForm = () => {
   const [showPdfDialog, setShowPdfDialog] = useState(false);
   const [pdfFilename, setPdfFilename] = useState('');
   const [sectionHeadingLevel, setSectionHeadingLevel] = useState('2');
+  const [useFirecrawl, setUseFirecrawl] = useState(false);
   const { toast } = useToast();
 
   const handleFetchUrl = async () => {
@@ -76,12 +78,18 @@ export const ScraperForm = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch('https://evzhqncqhityotzodfsp.supabase.co/functions/v1/scrape-to-markdown', {
+      const endpoint = useFirecrawl 
+        ? 'https://evzhqncqhityotzodfsp.supabase.co/functions/v1/firecrawl-scrape'
+        : 'https://evzhqncqhityotzodfsp.supabase.co/functions/v1/scrape-to-markdown';
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify(useFirecrawl ? { 
+          url: url.trim()
+        } : { 
           url: url.trim(),
           sectionHeadingLevel: parseInt(sectionHeadingLevel)
         }),
@@ -108,7 +116,7 @@ export const ScraperForm = () => {
       } else {
         toast({
           title: "Success",
-          description: sectionTitle.trim() 
+          description: sectionTitle.trim()
             ? `Successfully converted URL to Markdown with title "${sectionTitle.trim()}"`
             : "Successfully converted URL to Markdown",
         });
@@ -473,11 +481,25 @@ export const ScraperForm = () => {
                   disabled={isLoading}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
+                
+                <div className="flex items-center justify-between gap-3 py-3 px-1">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="firecrawl-mode"
+                      checked={useFirecrawl}
+                      onCheckedChange={setUseFirecrawl}
+                    />
+                    <Label htmlFor="firecrawl-mode" className="text-sm cursor-pointer">
+                      Use Firecrawl (for JavaScript-heavy sites)
+                    </Label>
+                  </div>
+                </div>
+
                 <Button 
                   onClick={handleFetchUrl} 
                   disabled={isLoading || !url.trim()}
                   size="lg"
-                  className="w-full gap-2 font-semibold transition-all hover:scale-105 mt-3"
+                  className="w-full gap-2 font-semibold transition-all hover:scale-105"
                 >
                   {isLoading ? (
                     <>
