@@ -1,4 +1,4 @@
-export const convertHtmlToMarkdown = (html: string): string => {
+export const convertHtmlToMarkdown = (html: string, sectionHeadingLevel: number = 2): string => {
   // Decode HTML entities
   const decodeEntities = (text: string): string => {
     const entities: Record<string, string> = {
@@ -27,7 +27,9 @@ export const convertHtmlToMarkdown = (html: string): string => {
   markdown = markdown.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
 
   // Convert section tags with aria-label or title attributes to headings
-  markdown = markdown.replace(/<section[^>]*(?:aria-label|data-title)=["']([^"']*)["'][^>]*>/gi, '\n## $1\n');
+  const headingPrefix = '#'.repeat(sectionHeadingLevel);
+  const sectionRegex = /<section[^>]*(?:aria-label|data-title)=["']([^"']*)["'][^>]*>/gi;
+  markdown = markdown.replace(sectionRegex, `\n${headingPrefix} $1\n`);
   markdown = markdown.replace(/<section[^>]*>/gi, '\n');
 
   // Try to extract main content
