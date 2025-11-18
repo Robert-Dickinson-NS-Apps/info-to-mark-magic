@@ -644,7 +644,7 @@ async function discoverBlogLinks(baseUrl: string, maxLinks: number): Promise<str
   }
 }
 
-async function scrapeUrlToMarkdown(url: string, sectionHeadingLevel: number = 2): Promise<{ markdown: string; html: string }> {
+async function scrapeUrlToMarkdown(url: string, sectionHeadingLevel: number = 2): Promise<{ markdown: string; html: string; title: string }> {
   console.log(`[SCRAPE] Starting scrape for: ${url}`);
   
   const response = await fetch(url, {
@@ -677,6 +677,11 @@ async function scrapeUrlToMarkdown(url: string, sectionHeadingLevel: number = 2)
   if (htmlLength < 5000) {
     console.warn(`[SCRAPE] WARNING: HTML is suspiciously short (${htmlLength} chars). This page may be JavaScript-rendered.`);
   }
+
+  // Extract page title
+  const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/i);
+  const pageTitle = titleMatch ? titleMatch[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').trim() : 'Untitled Page';
+  console.log(`[SCRAPE] Extracted page title: ${pageTitle}`);
 
   // Try to extract main content intelligently
   let contentHtml = html;
@@ -788,5 +793,5 @@ async function scrapeUrlToMarkdown(url: string, sectionHeadingLevel: number = 2)
     console.warn(`[SCRAPE] This often happens with JavaScript-heavy sites that require browser rendering.`);
   }
 
-  return { markdown, html: contentHtml };
+  return { markdown, html: contentHtml, title: pageTitle };
 }
