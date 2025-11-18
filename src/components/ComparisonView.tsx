@@ -35,6 +35,13 @@ export const ComparisonView = ({ sourceHtml, markdown, onMarkdownChange }: Compa
 
   const htmlStats = getStatistics(sourceHtml);
   const markdownStats = getStatistics(markdown);
+  
+  // Calculate compression ratio
+  const compressionRatio = htmlStats.characters > 0 
+    ? ((markdownStats.characters / htmlStats.characters) * 100).toFixed(1)
+    : 0;
+  const sizeDifference = markdownStats.characters - htmlStats.characters;
+  const isSmaller = sizeDifference < 0;
 
   // Get color based on match confidence score
   const getMatchColor = (score: number, totalWords: number) => {
@@ -328,38 +335,60 @@ export const ComparisonView = ({ sourceHtml, markdown, onMarkdownChange }: Compa
         </div>
 
         {/* Statistics Panel */}
-        <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded-lg text-xs">
-          <div>
-            <div className="font-medium text-foreground mb-2">HTML Statistics</div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <div className="text-muted-foreground">Characters</div>
-                <div className="text-foreground font-semibold">{htmlStats.characters.toLocaleString()}</div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded-lg text-xs">
+            <div>
+              <div className="font-medium text-foreground mb-2">HTML Statistics</div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <div className="text-muted-foreground">Characters</div>
+                  <div className="text-foreground font-semibold">{htmlStats.characters.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Words</div>
+                  <div className="text-foreground font-semibold">{htmlStats.words.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Lines</div>
+                  <div className="text-foreground font-semibold">{htmlStats.lines.toLocaleString()}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-muted-foreground">Words</div>
-                <div className="text-foreground font-semibold">{htmlStats.words.toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">Lines</div>
-                <div className="text-foreground font-semibold">{htmlStats.lines.toLocaleString()}</div>
+            </div>
+            <div>
+              <div className="font-medium text-foreground mb-2">Markdown Statistics</div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <div className="text-muted-foreground">Characters</div>
+                  <div className="text-foreground font-semibold">{markdownStats.characters.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Words</div>
+                  <div className="text-foreground font-semibold">{markdownStats.words.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Lines</div>
+                  <div className="text-foreground font-semibold">{markdownStats.lines.toLocaleString()}</div>
+                </div>
               </div>
             </div>
           </div>
-          <div>
-            <div className="font-medium text-foreground mb-2">Markdown Statistics</div>
-            <div className="grid grid-cols-3 gap-3">
+          
+          {/* Compression Ratio */}
+          <div className="p-3 bg-muted/50 rounded-lg text-xs">
+            <div className="flex items-center justify-between">
               <div>
-                <div className="text-muted-foreground">Characters</div>
-                <div className="text-foreground font-semibold">{markdownStats.characters.toLocaleString()}</div>
+                <div className="font-medium text-foreground mb-1">Compression Ratio</div>
+                <div className="text-muted-foreground">
+                  Markdown is <span className={`font-semibold ${isSmaller ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                    {Math.abs(sizeDifference).toLocaleString()} characters {isSmaller ? 'smaller' : 'larger'}
+                  </span> than HTML
+                </div>
               </div>
-              <div>
-                <div className="text-muted-foreground">Words</div>
-                <div className="text-foreground font-semibold">{markdownStats.words.toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">Lines</div>
-                <div className="text-foreground font-semibold">{markdownStats.lines.toLocaleString()}</div>
+              <div className="text-right">
+                <div className={`text-2xl font-bold ${isSmaller ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                  {compressionRatio}%
+                </div>
+                <div className="text-muted-foreground">of original size</div>
               </div>
             </div>
           </div>
