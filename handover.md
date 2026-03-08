@@ -535,13 +535,26 @@ Two tables exist for storing scraped content (currently used for data persistenc
 
 ### MarkdownPreview
 
-**File:** `src/components/MarkdownPreview.tsx` — 98 lines
+**File:** `src/components/MarkdownPreview.tsx` — ~115 lines
 
 Renders Markdown using `react-markdown` with:
 - GFM plugin for tables, strikethrough
 - Prism syntax highlighter for code blocks
 - 6 color themes
 - Custom styled components for all Markdown elements
+- Heading `id` attributes for anchor-based scroll navigation
+- `scrollToHeading` prop for programmatic scroll-to-section (used by TOC sidebar)
+
+### TableOfContents
+
+**File:** `src/components/TableOfContents.tsx` — 94 lines
+
+Collapsible sidebar for navigating long documents:
+- Extracts H1–H6 headings from markdown content using regex
+- Displays hierarchical, indented heading tree
+- Click-to-scroll with active heading highlight
+- Collapsible toggle (full width ↔ icon strip)
+- Integrated into Preview and Split view modes in `ScraperForm`
 
 ### ComparisonView
 
