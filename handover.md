@@ -307,7 +307,7 @@ A sophisticated side-by-side comparison tool:
   - Compression ratio (Markdown size vs HTML size)
 - **Copy Buttons**: Copy HTML or Markdown independently
 
-### 5.7 Export Options
+### 5.8 Export Options
 
 All exports are generated **client-side** (no server round-trip needed):
 
