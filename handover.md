@@ -358,7 +358,7 @@ Pre-built Markdown templates organized by category:
 
 Each template includes realistic placeholder content. Templates can be applied to replace or seed content.
 
-### 5.9 Workflow Diagram
+### 5.10 Workflow Diagram
 
 **Component:** `WorkflowDiagram.tsx`
 
