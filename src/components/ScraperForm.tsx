@@ -785,8 +785,14 @@ export const ScraperForm = () => {
             )}
 
             {viewMode === 'preview' && (
-              <div className="border border-border rounded-lg p-6 bg-background prose prose-neutral dark:prose-invert max-w-none overflow-auto" style={{ maxHeight: '600px' }}>
-                <MarkdownPreview content={markdown} theme="vscDarkPlus" />
+              <div className="flex border border-border rounded-lg overflow-hidden" style={{ maxHeight: '600px' }}>
+                <TableOfContents
+                  markdown={markdown}
+                  onNavigate={(item) => setScrollToHeading(item.id)}
+                />
+                <div className="flex-1 p-6 bg-background prose prose-neutral dark:prose-invert max-w-none overflow-auto">
+                  <MarkdownPreview content={markdown} theme="vscDarkPlus" scrollToHeading={scrollToHeading} />
+                </div>
               </div>
             )}
 
