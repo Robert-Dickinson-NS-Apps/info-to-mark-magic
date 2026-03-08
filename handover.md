@@ -251,8 +251,8 @@
 | Mode | Description |
 |---|---|
 | **Edit** | Full-width code editor with Markdown syntax highlighting |
-| **Split** | Side-by-side editor + live preview |
-| **Preview** | Full-width rendered Markdown preview |
+| **Split** | TOC sidebar + side-by-side editor + live preview |
+| **Preview** | TOC sidebar + full-width rendered Markdown preview with scroll-to-heading |
 | **Source** | Read-only HTML source with line numbers |
 | **Compare** | Side-by-side HTML↔Markdown comparison |
 
@@ -263,11 +263,32 @@
 **Preview Features** (`MarkdownPreview.tsx`):
 - GitHub Flavored Markdown (tables, strikethrough, task lists)
 - Syntax-highlighted code blocks (6 themes via Prism)
-- Styled headings with border separators
+- Styled headings with border separators and `id` anchors for TOC navigation
+- Scroll-to-heading support via `scrollToHeading` prop
 - External links open in new tabs
 - Responsive tables with horizontal scroll
 
-### 5.6 Comparison View
+### 5.6 Table of Contents Sidebar
+
+**Component:** `TableOfContents.tsx` (94 lines)
+
+A collapsible navigation sidebar for long Markdown documents:
+
+- **Heading Extraction**: Parses H1–H6 headings from Markdown content
+- **Hierarchical Display**: Indented headings based on level with `ChevronRight` indicators
+- **Click-to-Navigate**: Clicking a heading scrolls the preview to that section
+- **Active State**: Highlights the currently selected heading in primary color
+- **Collapsible**: Toggle between full sidebar (16rem) and icon-only (2.5rem) mode
+- **Integration**: Appears in **Preview** and **Split** view modes alongside content
+- **Styling**: Semi-transparent card background with backdrop blur, border separator
+
+**State:**
+| State | Type | Purpose |
+|---|---|---|
+| `isOpen` | boolean | Sidebar expanded/collapsed |
+| `activeId` | string \| null | Currently highlighted heading |
+
+### 5.7 Comparison View
 
 **Component:** `ComparisonView.tsx` (546 lines)
 
