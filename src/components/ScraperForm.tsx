@@ -70,6 +70,7 @@ export const ScraperForm = () => {
   const [maxPages, setMaxPages] = useState('10');
   const [crawlProgress, setCrawlProgress] = useState({ current: 0, total: 0 });
   const [isCrawling, setIsCrawling] = useState(false);
+  const [scrollToHeading, setScrollToHeading] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleFetchUrl = async () => {
