@@ -524,6 +524,7 @@ Two tables exist for storing scraped content (currently used for data persistenc
 | `showPdfDialog` | boolean | PDF export dialog visibility |
 | `pdfFilename` | string | Custom PDF filename |
 | `showClearDialog` | boolean | Clear confirmation dialog |
+| `scrollToHeading` | string \| null | ID of heading to scroll to (from TOC) |
 
 **Key Behaviors:**
 - Content **accumulates** — each scrape appends to existing markdown with `---` separator
