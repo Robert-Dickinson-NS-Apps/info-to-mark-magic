@@ -140,10 +140,11 @@
 │   ├── main.tsx                         # Entry point
 │   ├── index.css                        # Tailwind directives & CSS variables
 │   ├── components/
-│   │   ├── ScraperForm.tsx              # **Main component** (919 lines) — input, scraping, results
-│   │   ├── MarkdownPreview.tsx          # Renders markdown with syntax highlighting
+│   │   ├── ScraperForm.tsx              # **Main component** (~940 lines) — input, scraping, results
+│   │   ├── MarkdownPreview.tsx          # Renders markdown with syntax highlighting + scroll-to-heading
 │   │   ├── MarkdownEditor.tsx           # Standalone editor with edit/split/preview modes
 │   │   ├── ComparisonView.tsx           # Side-by-side HTML↔Markdown comparison (546 lines)
+│   │   ├── TableOfContents.tsx          # Collapsible TOC sidebar for long documents (94 lines)
 │   │   ├── CodeViewerWithLineNumbers.tsx # Read-only code viewer with line numbers
 │   │   ├── BatchExport.tsx              # Batch export manager for multiple scrapes
 │   │   ├── TemplateLibrary.tsx          # Pre-built markdown template selector
