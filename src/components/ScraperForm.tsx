@@ -10,6 +10,8 @@ import { MarkdownPreview } from './MarkdownPreview';
 import { Textarea } from '@/components/ui/textarea';
 import { CodeViewerWithLineNumbers } from './CodeViewerWithLineNumbers';
 import { ComparisonView } from './ComparisonView';
+import { TableOfContents } from './TableOfContents';
+import { TocItem } from '@/utils/markdownUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,6 +70,7 @@ export const ScraperForm = () => {
   const [maxPages, setMaxPages] = useState('10');
   const [crawlProgress, setCrawlProgress] = useState({ current: 0, total: 0 });
   const [isCrawling, setIsCrawling] = useState(false);
+  const [scrollToHeading, setScrollToHeading] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleFetchUrl = async () => {
@@ -782,30 +785,42 @@ export const ScraperForm = () => {
             )}
 
             {viewMode === 'preview' && (
-              <div className="border border-border rounded-lg p-6 bg-background prose prose-neutral dark:prose-invert max-w-none overflow-auto" style={{ maxHeight: '600px' }}>
-                <MarkdownPreview content={markdown} theme="vscDarkPlus" />
+              <div className="flex border border-border rounded-lg overflow-hidden" style={{ maxHeight: '600px' }}>
+                <TableOfContents
+                  markdown={markdown}
+                  onNavigate={(item) => setScrollToHeading(item.id)}
+                />
+                <div className="flex-1 p-6 bg-background prose prose-neutral dark:prose-invert max-w-none overflow-auto">
+                  <MarkdownPreview content={markdown} theme="vscDarkPlus" scrollToHeading={scrollToHeading} />
+                </div>
               </div>
             )}
 
             {viewMode === 'split' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="border border-border rounded-lg overflow-hidden bg-muted/30">
-                  <CodeEditor
-                    value={markdown}
-                    language="markdown"
-                    placeholder="Converted markdown..."
-                    onChange={(e) => setMarkdown(e.target.value)}
-                    padding={15}
-                    data-color-mode="dark"
-                    style={{
-                      fontSize: 13,
-                      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-                      minHeight: '500px',
-                    }}
-                  />
-                </div>
-                <div className="border border-border rounded-lg p-6 bg-background prose prose-neutral dark:prose-invert max-w-none overflow-auto" style={{ maxHeight: '500px' }}>
-                  <MarkdownPreview content={markdown} theme="vscDarkPlus" />
+              <div className="flex gap-0 border border-border rounded-lg overflow-hidden" style={{ maxHeight: '600px' }}>
+                <TableOfContents
+                  markdown={markdown}
+                  onNavigate={(item) => setScrollToHeading(item.id)}
+                />
+                <div className="flex-1 grid grid-cols-2 gap-0 divide-x divide-border">
+                  <div className="overflow-hidden bg-muted/30">
+                    <CodeEditor
+                      value={markdown}
+                      language="markdown"
+                      placeholder="Converted markdown..."
+                      onChange={(e) => setMarkdown(e.target.value)}
+                      padding={15}
+                      data-color-mode="dark"
+                      style={{
+                        fontSize: 13,
+                        fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+                        minHeight: '500px',
+                      }}
+                    />
+                  </div>
+                  <div className="p-6 bg-background prose prose-neutral dark:prose-invert max-w-none overflow-auto">
+                    <MarkdownPreview content={markdown} theme="vscDarkPlus" scrollToHeading={scrollToHeading} />
+                  </div>
                 </div>
               </div>
             )}
