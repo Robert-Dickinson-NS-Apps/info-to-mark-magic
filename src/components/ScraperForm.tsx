@@ -10,6 +10,8 @@ import { MarkdownPreview } from './MarkdownPreview';
 import { Textarea } from '@/components/ui/textarea';
 import { CodeViewerWithLineNumbers } from './CodeViewerWithLineNumbers';
 import { ComparisonView } from './ComparisonView';
+import { TableOfContents } from './TableOfContents';
+import { TocItem } from '@/utils/markdownUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
