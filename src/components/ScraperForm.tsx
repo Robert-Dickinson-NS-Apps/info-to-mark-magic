@@ -797,24 +797,30 @@ export const ScraperForm = () => {
             )}
 
             {viewMode === 'split' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="border border-border rounded-lg overflow-hidden bg-muted/30">
-                  <CodeEditor
-                    value={markdown}
-                    language="markdown"
-                    placeholder="Converted markdown..."
-                    onChange={(e) => setMarkdown(e.target.value)}
-                    padding={15}
-                    data-color-mode="dark"
-                    style={{
-                      fontSize: 13,
-                      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-                      minHeight: '500px',
-                    }}
-                  />
-                </div>
-                <div className="border border-border rounded-lg p-6 bg-background prose prose-neutral dark:prose-invert max-w-none overflow-auto" style={{ maxHeight: '500px' }}>
-                  <MarkdownPreview content={markdown} theme="vscDarkPlus" />
+              <div className="flex gap-0 border border-border rounded-lg overflow-hidden" style={{ maxHeight: '600px' }}>
+                <TableOfContents
+                  markdown={markdown}
+                  onNavigate={(item) => setScrollToHeading(item.id)}
+                />
+                <div className="flex-1 grid grid-cols-2 gap-0 divide-x divide-border">
+                  <div className="overflow-hidden bg-muted/30">
+                    <CodeEditor
+                      value={markdown}
+                      language="markdown"
+                      placeholder="Converted markdown..."
+                      onChange={(e) => setMarkdown(e.target.value)}
+                      padding={15}
+                      data-color-mode="dark"
+                      style={{
+                        fontSize: 13,
+                        fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+                        minHeight: '500px',
+                      }}
+                    />
+                  </div>
+                  <div className="p-6 bg-background prose prose-neutral dark:prose-invert max-w-none overflow-auto">
+                    <MarkdownPreview content={markdown} theme="vscDarkPlus" scrollToHeading={scrollToHeading} />
+                  </div>
                 </div>
               </div>
             )}
