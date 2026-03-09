@@ -1,7 +1,7 @@
 # BobSWMM URL to Markdown Converter — Handover Document
 
-**Version:** 1.1  
-**Date:** 2026-03-08  
+**Version:** 1.2  
+**Date:** 2026-03-09
 **Project URL:** https://lovable.dev/projects/ef41f2de-370a-47bc-adf2-fed32a053c2f  
 **Published URL:** https://info-to-mark-magic.lovable.app
 
@@ -34,7 +34,8 @@
 - [12. UI/UX Design](#12-uiux-design)
 - [13. Known Limitations](#13-known-limitations)
 - [14. Future Enhancement Ideas](#14-future-enhancement-ideas)
-- [15. Development & Deployment](#15-development--deployment)
+- [15. Documentation Page](#15-documentation-page)
+- [16. Development & Deployment](#16-development--deployment)
 
 ---
 
@@ -135,7 +136,7 @@
 │   ├── placeholder.svg
 │   └── robots.txt
 ├── src/
-│   ├── App.tsx                          # Root component with routing
+│   ├── App.tsx                          # Root component with routing (/, /docs, 404)
 │   ├── App.css                          # Global styles
 │   ├── main.tsx                         # Entry point
 │   ├── index.css                        # Tailwind directives & CSS variables
@@ -163,7 +164,8 @@
 │   ├── lib/
 │   │   └── utils.ts                     # cn() utility for className merging
 │   ├── pages/
-│   │   ├── Index.tsx                    # Home page (renders ScraperForm + WorkflowDiagram)
+│   │   ├── Index.tsx                    # Home page (renders ScraperForm + WorkflowDiagram + Docs link)
+│   │   ├── Docs.tsx                     # Documentation page (renders handover.md with TOC sidebar)
 │   │   └── NotFound.tsx                 # 404 page
 │   └── utils/
 │       ├── htmlToMarkdown.ts            # Client-side HTML→Markdown converter
@@ -180,6 +182,7 @@
 │       │   └── index.ts                 # Main scraping edge function (797 lines)
 │       └── firecrawl-scrape/
 │           └── index.ts                 # Firecrawl API proxy edge function
+├── handover.md                          # This documentation file (rendered at /docs)
 ├── index.html                           # HTML entry point
 ├── vite.config.ts                       # Vite configuration
 ├── tailwind.config.ts                   # Tailwind configuration
@@ -767,7 +770,23 @@ All colors use semantic tokens:
 
 ---
 
-## 15. Development & Deployment
+## 15. Documentation Page
+
+**Route:** `/docs`  
+**Component:** `src/pages/Docs.tsx` — 43 lines
+
+A dedicated in-app documentation page that renders this `handover.md` file:
+
+- **Raw Import**: Uses Vite's `?raw` import to load `handover.md` as a string at build time
+- **TOC Sidebar**: Displays the `TableOfContents` component for navigating the document
+- **Markdown Preview**: Renders the full document with `MarkdownPreview` (syntax highlighting, GFM, scroll-to-heading)
+- **Navigation**: Back button to return to home (`/`), plus `ThemeToggle` in the header
+- **Sticky Header**: Fixed header with backdrop blur, matching the app's design system
+- **Access**: "Docs" button in the top-right corner of the home page (`Index.tsx`)
+
+---
+
+## 16. Development & Deployment
 
 ### Local Development
 
@@ -803,4 +822,4 @@ Use the Lovable dependency tools — do not manually edit `package.json`.
 
 ---
 
-*This document was generated on 2026-03-08 for project handover purposes.*
+*This document was last updated on 2026-03-09 (v1.2) for project handover purposes.*
