@@ -182,6 +182,7 @@
 │       │   └── index.ts                 # Main scraping edge function (797 lines)
 │       └── firecrawl-scrape/
 │           └── index.ts                 # Firecrawl API proxy edge function
+├── handover.md                          # This documentation file (rendered at /docs)
 ├── index.html                           # HTML entry point
 ├── vite.config.ts                       # Vite configuration
 ├── tailwind.config.ts                   # Tailwind configuration
