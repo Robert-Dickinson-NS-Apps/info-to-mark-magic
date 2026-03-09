@@ -1,7 +1,7 @@
 # BobSWMM URL to Markdown Converter — Handover Document
 
-**Version:** 1.1  
-**Date:** 2026-03-08  
+**Version:** 1.2  
+**Date:** 2026-03-09
 **Project URL:** https://lovable.dev/projects/ef41f2de-370a-47bc-adf2-fed32a053c2f  
 **Published URL:** https://info-to-mark-magic.lovable.app
 
