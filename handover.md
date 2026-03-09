@@ -136,7 +136,7 @@
 │   ├── placeholder.svg
 │   └── robots.txt
 ├── src/
-│   ├── App.tsx                          # Root component with routing
+│   ├── App.tsx                          # Root component with routing (/, /docs, 404)
 │   ├── App.css                          # Global styles
 │   ├── main.tsx                         # Entry point
 │   ├── index.css                        # Tailwind directives & CSS variables
